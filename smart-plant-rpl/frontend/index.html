@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Plant Dashboard - Sistem Monitoring & Kontrol IoT</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- Navbar Header -->
+    <nav class="navbar navbar-dark navbar-custom py-3">
+        <div class="container">
+            <div class="d-flex align-items-center">
+                <div class="brand-icon me-3 text-white">
+                    <i class="bi bi-flower1 fs-4"></i>
+                </div>
+                <div>
+                    <h1 class="h4 mb-0 text-white fw-bold">Smart Plant Dashboard</h1>
+                    <small class="text-white-50">Sistem Monitoring & Kontrol Penyiraman Tanaman Berbasis IoT</small>
+                </div>
+            </div>
+            <div class="d-flex align-items-center mt-2 mt-md-0 gap-2">
+                <span id="deviceBadge" class="badge bg-light text-dark px-3 py-2 rounded-pill shadow-sm">
+                    <i class="bi bi-cpu me-1 text-success"></i>
+                    <span id="deviceName">Memuat perangkat...</span>
+                </span>
+                <span id="onlineStatusBadge" class="badge bg-secondary px-3 py-2 rounded-pill shadow-sm">
+                    <span class="pulse-dot offline me-1" id="pulseDot"></span>
+                    <span id="onlineStatusText">Memeriksa...</span>
+                </span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <main class="container my-4">
+        
+        <!-- Bar Status Auto-Refresh & Refresh Manual -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="text-muted small">
+                <i class="bi bi-arrow-repeat spin-icon me-1 text-primary"></i>
+                Pembaruan otomatis data setiap <strong>5 detik</strong>.
+                <span id="countdownText" class="ms-1 badge bg-light text-secondary border">5s</span>
+            </div>
+            <div>
+                <button id="btnManualRefresh" class="btn btn-sm btn-outline-secondary rounded-pill px-3 shadow-sm">
+                    <i class="bi bi-arrow-clockwise me-1"></i> Segarkan Sekarang
+                </button>
+            </div>
+        </div>
+
+        <!-- 4 STATUS CARDS -->
+        <div class="row g-3 mb-4">
+            
+            <!-- 1. Kelembapan Tanah -->
+            <div class="col-12 col-sm-6 col-lg-3">
+                <div class="status-card card-moisture p-4 h-100">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <span class="text-muted small fw-semibold text-uppercase">Kelembapan Tanah</span>
+                            <div class="status-value text-primary mt-1" id="valMoisture">--%</div>
+                        </div>
+                        <div class="card-icon-box icon-moisture shadow-sm">
+                            <i class="bi bi-droplet-half"></i>
+                        </div>
+                    </div>
+                    <!-- Progress Bar Kelembapan -->
+                    <div class="progress mb-2" style="height: 8px;">
+                        <div id="progressMoisture" class="progress-bar bg-primary" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small id="moistureStatusLabel" class="text-muted fw-semibold">Memuat...</small>
+                        <small id="moistureUpdateTime" class="text-muted" style="font-size: 0.75rem;">--:--</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Status Pompa -->
+            <div class="col-12 col-sm-6 col-lg-3">
+                <div class="status-card card-pump p-4 h-100">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <span class="text-muted small fw-semibold text-uppercase">Status Pompa</span>
+                            <div class="mt-2">
+                                <span id="valPumpBadge" class="badge bg-secondary fs-6 px-3 py-2 rounded-pill">
+                                    MEMUAT...
+                                </span>
+                            </div>
+                        </div>
+                        <div class="card-icon-box icon-pump-off shadow-sm" id="pumpIconBox">
+                            <i class="bi bi-water" id="pumpIcon"></i>
+                        </div>
+                    </div>
+                    <p class="text-muted small mb-0 mt-3" id="pumpDescription">
+                        Relay pompa air saat ini sedang mati.
+                    </p>
+                </div>
+            </div>
+
+            <!-- 3. Mode Operasi -->
+            <div class="col-12 col-sm-6 col-lg-3">
+                <div class="status-card card-mode p-4 h-100">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <span class="text-muted small fw-semibold text-uppercase">Mode Operasi</span>
+                            <div class="mt-2">
+                                <span id="valModeBadge" class="badge bg-secondary fs-6 px-3 py-2 rounded-pill">
+                                    MEMUAT...
+                                </span>
+                            </div>
+                        </div>
+                        <div class="card-icon-box icon-mode shadow-sm">
+                            <i class="bi bi-sliders"></i>
+                        </div>
+                    </div>
+                    <p class="text-muted small mb-0 mt-3" id="modeDescription">
+                        Sistem bekerja otomatis sesuai sensor.
+                    </p>
+                </div>
+            </div>
+
+            <!-- 4. Sinkronisasi Terakhir -->
+            <div class="col-12 col-sm-6 col-lg-3">
+                <div class="status-card card-sync p-4 h-100">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <span class="text-muted small fw-semibold text-uppercase">Sinkron Terakhir</span>
+                            <div class="fs-4 fw-bold text-dark mt-1" id="valLastSync">--:--:--</div>
+                        </div>
+                        <div class="card-icon-box icon-sync shadow-sm">
+                            <i class="bi bi-clock-history"></i>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center mt-3">
+                        <small id="valLastSyncDiff" class="text-muted">Menghubungkan ke server...</small>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ROW: KONTROL PERANGKAT & RINGKASAN STATISTIK -->
+        <div class="row g-4 mb-4">
+            
+            <!-- KARTU KONTROL (AUTO/MANUAL & NYALAKAN/MATIKAN POMPA) -->
+            <div class="col-12 col-lg-7">
+                <div class="card controls-card p-4 h-100">
+                    <div class="border-bottom pb-3 mb-3 d-flex justify-content-between align-items-center">
+                        <h2 class="h5 mb-0 fw-bold text-dark">
+                            <i class="bi bi-toggles2 text-primary me-2"></i>Kontrol Perangkat IoT
+                        </h2>
+                        <span class="badge bg-light text-secondary border">Real-time Override</span>
+                    </div>
+
+                    <!-- Toggle Mode Operasi -->
+                    <div class="row align-items-center py-2 mb-3 bg-light rounded-3 p-3">
+                        <div class="col-sm-8 mb-2 mb-sm-0">
+                            <h6 class="mb-1 fw-bold text-dark">Pilihan Mode Operasi</h6>
+                            <p class="text-muted small mb-0">
+                                Mode Otomatis menyiram otomatis saat tanah kering (< 35%). Mode Manual memungkinkan kontrol pompa langsung dari tombol.
+                            </p>
+                        </div>
+                        <div class="col-sm-4 text-sm-end">
+                            <div class="form-check form-switch switch-custom d-inline-block">
+                                <input class="form-check-input" type="checkbox" role="switch" id="switchOperatingMode">
+                                <label class="form-check-label fw-bold ms-2" for="switchOperatingMode" id="switchModeLabel">Otomatis</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tombol Kontrol Pompa Manual -->
+                    <div class="row align-items-center py-2 bg-light rounded-3 p-3">
+                        <div class="col-sm-7 mb-3 mb-sm-0">
+                            <h6 class="mb-1 fw-bold text-dark">Kontrol Pompa Manual</h6>
+                            <p class="text-muted small mb-0" id="pumpControlHint">
+                                Pompa hanya dapat diaktifkan atau dimatikan jika perangkat berada dalam <strong>Mode Manual</strong>.
+                            </p>
+                        </div>
+                        <div class="col-sm-5 text-sm-end">
+                            <button id="btnTogglePump" class="btn btn-pump-action btn-secondary w-100" disabled>
+                                <span class="spinner-border spinner-border-sm me-1 d-none" id="pumpSpinner" role="status"></span>
+                                <i class="bi bi-power me-1" id="pumpBtnIcon"></i>
+                                <span id="btnPumpText">Nyalakan Pompa</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Alert Info jika Mode AUTO aktif -->
+                    <div id="autoModeNotice" class="alert alert-info py-2 px-3 mt-3 mb-0 small d-flex align-items-center rounded-3">
+                        <i class="bi bi-info-circle-fill me-2 fs-5"></i>
+                        <div>
+                            Mode Otomatis sedang aktif. Pompa akan menyala dan mati secara otomatis berdasarkan pembacaan kelembapan sensor ESP32.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KARTU STATISTIK CEPAT & INFORMASI PERANGKAT -->
+            <div class="col-12 col-lg-5">
+                <div class="card controls-card p-4 h-100">
+                    <div class="border-bottom pb-3 mb-3">
+                        <h2 class="h5 mb-0 fw-bold text-dark">
+                            <i class="bi bi-info-circle text-success me-2"></i>Informasi & Statistik
+                        </h2>
+                    </div>
+
+                    <div class="list-group list-group-flush mb-3">
+                        <div class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                            <span class="text-muted small">Alamat MAC ESP32</span>
+                            <span class="badge bg-secondary font-monospace" id="valMacAddress">--:--:--:--:--:--</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                            <span class="text-muted small">Ambang Batas Siram (AUTO)</span>
+                            <span class="fw-semibold text-dark">< 35.0% (Kering)</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                            <span class="text-muted small">Rata-rata Kelembapan (10 Log)</span>
+                            <span class="fw-bold text-primary" id="valAvgMoisture">--%</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                            <span class="text-muted small">Kelembapan Terendah / Tertinggi</span>
+                            <span class="fw-semibold text-dark">
+                                <span id="valMinMoisture" class="text-danger">--%</span> / 
+                                <span id="valMaxMoisture" class="text-success">--%</span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="bg-light p-3 rounded-3 mt-auto">
+                        <div class="small fw-semibold text-muted mb-1">Status Ambang Kelembapan:</div>
+                        <div class="d-flex justify-content-between small text-center">
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">Kering: < 35%</span>
+                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">Lembab: 35-70%</span>
+                            <span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-1">Basah: > 70%</span>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+
+        <!-- TABEL DATA 10 LOG TERAKHIR -->
+        <div class="card table-card">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-bottom">
+                <div>
+                    <h2 class="h5 mb-0 fw-bold text-dark">
+                        <i class="bi bi-clock-history text-secondary me-2"></i>10 Riwayat Terakhir Log Sensor
+                    </h2>
+                    <small class="text-muted">Data pembacaan yang dikirimkan oleh mikrokontroler ESP32</small>
+                </div>
+                <span class="badge bg-primary rounded-pill px-3 py-2" id="logCountBadge">10 Data Tersedia</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-custom mb-0 text-center align-middle" id="tableSensorLogs">
+                    <thead>
+                        <tr>
+                            <th style="width: 5%;">#</th>
+                            <th class="text-start" style="width: 25%;">Waktu Pembacaan</th>
+                            <th style="width: 20%;">Kelembapan (%)</th>
+                            <th style="width: 30%;">Indikator Visual</th>
+                            <th style="width: 20%;">Kondisi Tanah</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logsTableBody">
+                        <tr>
+                            <td colspan="5" class="py-4 text-muted">
+                                <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                                Memuat data riwayat sensor...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="text-center py-4 border-top mt-5 bg-white">
+        <div class="container">
+            <p class="mb-1 fw-semibold text-secondary">
+                Smart Plant Dashboard &copy; 2026 - Rekayasa Perangkat Lunak (RPL) IoT Project
+            </p>
+            <p class="mb-0 text-muted small">
+                Frontend: HTML5, CSS3, Bootstrap 5 & Vanilla JS | Backend: Native PHP 8 PDO | Hardware: ESP32 + Sensor Soil Moisture
+            </p>
+        </div>
+    </footer>
+
+    <!-- Toast Notification Container -->
+    <div class="toast-container position-fixed top-0 end-0 p-3">
+        <div id="liveToast" class="toast align-items-center border-0 shadow-lg" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body d-flex align-items-center" id="toastMessage">
+                    <i class="bi bi-check-circle-fill fs-5 text-success me-2" id="toastIcon"></i>
+                    <span id="toastText">Operasi berhasil dilakukan.</span>
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 Bundle with Popper JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom Vanilla JavaScript -->
+    <script src="js/app.js"></script>
+</body>
+</html>

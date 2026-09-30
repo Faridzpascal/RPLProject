@@ -1,0 +1,206 @@
+/**
+ * Smart Plant Dashboard - Custom CSS Stylesheet
+ * Bootstrap 5 Enhanced Theme for University IoT Project
+ */
+
+:root {
+    --primary-plant: #198754;
+    --primary-plant-dark: #0f5132;
+    --primary-plant-light: #d1e7dd;
+    --soil-accent: #795548;
+    --bg-main: #f4f7f6;
+    --card-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+    --card-hover-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
+}
+
+body {
+    background-color: var(--bg-main);
+    font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+    color: #2b2f33;
+    min-height: 100vh;
+}
+
+/* Header & Navbar */
+.navbar-custom {
+    background: linear-gradient(135deg, #198754 0%, #157347 100%);
+    box-shadow: 0 4px 15px rgba(25, 135, 84, 0.2);
+}
+
+.brand-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    backdrop-filter: blur(4px);
+}
+
+/* Status Cards */
+.status-card {
+    border: none;
+    border-radius: 16px;
+    background: #ffffff;
+    box-shadow: var(--card-shadow);
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    overflow: hidden;
+    position: relative;
+}
+
+.status-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--card-hover-shadow);
+}
+
+.status-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+}
+
+.card-moisture::before { background: linear-gradient(90deg, #0dcaf0, #0d6efd); }
+.card-pump::before { background: linear-gradient(90deg, #198754, #20c997); }
+.card-mode::before { background: linear-gradient(90deg, #6f42c1, #0d6efd); }
+.card-sync::before { background: linear-gradient(90deg, #ffc107, #fd7e14); }
+
+.card-icon-box {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+}
+
+.icon-moisture { background-color: #e7f5ff; color: #0d6efd; }
+.icon-pump-on { background-color: #d1e7dd; color: #0f5132; }
+.icon-pump-off { background-color: #f8d7da; color: #842029; }
+.icon-mode { background-color: #f3e8ff; color: #6f42c1; }
+.icon-sync { background-color: #fff3cd; color: #664d03; }
+
+.status-value {
+    font-size: 2.2rem;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+}
+
+/* Pulse animation for Live Indicator */
+.pulse-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    position: relative;
+}
+
+.pulse-dot.online {
+    background-color: #198754;
+    box-shadow: 0 0 0 0 rgba(25, 135, 84, 0.7);
+    animation: pulse 1.8s infinite;
+}
+
+.pulse-dot.offline {
+    background-color: #dc3545;
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(25, 135, 84, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 8px rgba(25, 135, 84, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(25, 135, 84, 0);
+    }
+}
+
+/* Water Droplet Wave Effect for Pump */
+.pump-active-badge {
+    animation: bounce 1.5s infinite;
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+}
+
+/* Controls Box */
+.controls-card {
+    border: none;
+    border-radius: 16px;
+    background: #ffffff;
+    box-shadow: var(--card-shadow);
+}
+
+.switch-custom .form-check-input {
+    width: 3.2rem;
+    height: 1.7rem;
+    cursor: pointer;
+}
+
+.switch-custom .form-check-input:checked {
+    background-color: #6f42c1;
+    border-color: #6f42c1;
+}
+
+.btn-pump-action {
+    font-size: 1.05rem;
+    font-weight: 600;
+    padding: 0.75rem 1.75rem;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+}
+
+.btn-pump-action:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+}
+
+/* Data Table Card */
+.table-card {
+    border: none;
+    border-radius: 16px;
+    background: #ffffff;
+    box-shadow: var(--card-shadow);
+    overflow: hidden;
+}
+
+.table-custom thead th {
+    background-color: #f8fafc;
+    color: #495057;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+    border-bottom: 2px solid #edf2f7;
+    padding: 1rem;
+}
+
+.table-custom tbody td {
+    padding: 0.95rem 1rem;
+    vertical-align: middle;
+    border-bottom: 1px solid #edf2f7;
+    font-size: 0.92rem;
+}
+
+.table-custom tbody tr:hover {
+    background-color: #fcfcfc;
+}
+
+/* Toast Container */
+.toast-container {
+    z-index: 1080;
+}
+
+/* Footer */
+footer {
+    color: #6c757d;
+    font-size: 0.88rem;
+}
