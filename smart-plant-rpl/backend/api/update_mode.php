@@ -21,6 +21,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'POST') !== 'POST') {
 }
 
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../helpers/PlantLogic.php';
 
 $raw_input = file_get_contents("php://input");
 $data = json_decode($raw_input, true);
@@ -28,7 +29,7 @@ $data = json_decode($raw_input, true);
 $mode = strtoupper(trim((string)($data['operating_mode'] ?? $_POST['operating_mode'] ?? '')));
 $mac_address = $data['mac_address'] ?? $_POST['mac_address'] ?? null;
 
-if (!in_array($mode, ['AUTO', 'MANUAL'], true)) {
+if (!PlantLogic::isValidMode($mode)) {
     http_response_code(400);
     echo json_encode([
         "status" => "error",

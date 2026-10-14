@@ -21,6 +21,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'POST') !== 'POST') {
 }
 
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../helpers/PlantLogic.php';
 
 $raw_input = file_get_contents("php://input");
 $data = json_decode($raw_input, true);
@@ -28,7 +29,7 @@ $data = json_decode($raw_input, true);
 $pump_status = strtoupper(trim((string)($data['pump_status'] ?? $_POST['pump_status'] ?? '')));
 $mac_address = $data['mac_address'] ?? $_POST['mac_address'] ?? null;
 
-if (!in_array($pump_status, ['ON', 'OFF'], true)) {
+if (!PlantLogic::isValidPumpStatus($pump_status)) {
     http_response_code(400);
     echo json_encode([
         "status" => "error",
@@ -57,8 +58,8 @@ try {
         exit();
     }
 
-    // Aturan Sistem: Kontrol manual pompa HANYA dapat dilakukan jika mode adalah MANUAL
-    if ($device['operating_mode'] === 'AUTO') {
+    // Aturan Sistem (Guard Rule): Kontrol manual pompa HANYA dapat dilakukan jika mode adalah MANUAL
+    if (!PlantLogic::canToggleManualPump($device['operating_mode'])) {
         http_response_code(403);
         echo json_encode([
             "status" => "error",

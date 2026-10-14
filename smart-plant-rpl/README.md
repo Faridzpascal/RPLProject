@@ -234,5 +234,27 @@ Mengendalikan relay pompa secara manual saat berada di mode MANUAL.
 
 ---
 
+## 🧪 Unit Testing & Pengujian Otomatis (Tugas Pertemuan 5 RPL)
+
+Proyek ini telah dilengkapi dengan unit test harness otomatis (zero-dependency) untuk memvalidasi seluruh acceptance criteria Fitur 1 dan Fitur 2:
+
+### Cara 1: Menjalankan via Terminal / CLI
+Buka terminal di root direktori proyek, lalu jalankan:
+```bash
+php tests/run_tests.php
+```
+*Output menampilkan hasil assertion dari `SensorMonitoringTest` dan `PumpControlTest` beserta waktu eksekusi.*
+
+### Cara 2: Menjalankan via Browser (Visual Test Runner)
+1. Buka browser ke:
+   ```
+   http://localhost/smart-plant-rpl/tests/
+   ```
+   *(Atau buka langsung file `tests/index.html` di browser Anda)*
+2. Tampilan akan memvisualisasikan seluruh pengujian unit dengan status lulus (*PASSED*), badge indikator, dan ringkasan metrik secara real-time.
+
+---
+
 ## 👨‍💻 Kontribusi & Hak Cipta
 Dibuat untuk keperluan akademik / tugas proyek Rekayasa Perangkat Lunak (RPL). Bebas dimodifikasi dan dikembangkan untuk keperluan penelitian dan pembelajaran IoT.
+

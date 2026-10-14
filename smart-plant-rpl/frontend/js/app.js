@@ -15,7 +15,44 @@ let appState = {
     pumpStatus: 'OFF',
     currentMoisture: 0,
     isUpdating: false,
-    countdown: REFRESH_INTERVAL_SECONDS
+    countdown: REFRESH_INTERVAL_SECONDS,
+    isDemoMode: false,
+    hasRenderedOnce: false
+};
+
+// Data Simulasi Fallback (Memastikan UI selalu tampil prima saat offline / belum konek DB)
+const FALLBACK_DEMO_DATA = {
+    device: {
+        id: 1,
+        mac_address: '24:6F:28:7A:B1:C0',
+        name: 'ESP32 - Tanaman Monstera',
+        operating_mode: 'AUTO',
+        pump_status: 'OFF',
+        last_seen: new Date().toISOString().slice(0, 19).replace('T', ' '),
+        is_online: false,
+        seconds_since_last_seen: 45
+    },
+    current_moisture: 52.8,
+    last_moisture_time: new Date().toISOString().slice(0, 19).replace('T', ' '),
+    logs: [
+        { id: 10, moisture_level: 52.8, created_at: new Date(Date.now() - 60000).toISOString().slice(0, 19).replace('T', ' ') },
+        { id: 9,  moisture_level: 55.4, created_at: new Date(Date.now() - 300000).toISOString().slice(0, 19).replace('T', ' ') },
+        { id: 8,  moisture_level: 28.0, created_at: new Date(Date.now() - 600000).toISOString().slice(0, 19).replace('T', ' ') },
+        { id: 7,  moisture_level: 31.4, created_at: new Date(Date.now() - 900000).toISOString().slice(0, 19).replace('T', ' ') },
+        { id: 6,  moisture_level: 35.1, created_at: new Date(Date.now() - 1200000).toISOString().slice(0, 19).replace('T', ' ') },
+        { id: 5,  moisture_level: 38.5, created_at: new Date(Date.now() - 1500000).toISOString().slice(0, 19).replace('T', ' ') },
+        { id: 4,  moisture_level: 41.8, created_at: new Date(Date.now() - 1800000).toISOString().slice(0, 19).replace('T', ' ') },
+        { id: 3,  moisture_level: 44.0, created_at: new Date(Date.now() - 2100000).toISOString().slice(0, 19).replace('T', ' ') },
+        { id: 2,  moisture_level: 46.2, created_at: new Date(Date.now() - 2400000).toISOString().slice(0, 19).replace('T', ' ') },
+        { id: 1,  moisture_level: 48.5, created_at: new Date(Date.now() - 2700000).toISOString().slice(0, 19).replace('T', ' ') }
+    ],
+    stats: {
+        avg: 42.2,
+        min: 28.0,
+        max: 55.4,
+        count: 10
+    },
+    server_time: new Date().toISOString().slice(0, 19).replace('T', ' ')
 };
 
 // Referensi Elemen DOM
@@ -27,6 +64,8 @@ const dom = {
     onlineStatusText: document.getElementById('onlineStatusText'),
     countdownText: document.getElementById('countdownText'),
     btnManualRefresh: document.getElementById('btnManualRefresh'),
+    connectionAlert: document.getElementById('connectionAlert'),
+    btnRetryConnection: document.getElementById('btnRetryConnection'),
 
     // Kartu Status
     valMoisture: document.getElementById('valMoisture'),
@@ -36,6 +75,7 @@ const dom = {
 
     valPumpBadge: document.getElementById('valPumpBadge'),
     pumpIconBox: document.getElementById('pumpIconBox'),
+    pumpIcon: document.getElementById('pumpIcon'),
     pumpDescription: document.getElementById('pumpDescription'),
 
     valModeBadge: document.getElementById('valModeBadge'),
@@ -83,13 +123,27 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Pasang Event Listener
-    dom.btnManualRefresh.addEventListener('click', () => {
-        appState.countdown = REFRESH_INTERVAL_SECONDS;
-        fetchDashboardData(true);
-    });
+    if (dom.btnManualRefresh) {
+        dom.btnManualRefresh.addEventListener('click', () => {
+            appState.countdown = REFRESH_INTERVAL_SECONDS;
+            fetchDashboardData(true);
+        });
+    }
 
-    dom.switchOperatingMode.addEventListener('change', handleModeChange);
-    dom.btnTogglePump.addEventListener('click', handlePumpToggle);
+    if (dom.btnRetryConnection) {
+        dom.btnRetryConnection.addEventListener('click', () => {
+            appState.countdown = REFRESH_INTERVAL_SECONDS;
+            fetchDashboardData(true);
+        });
+    }
+
+    if (dom.switchOperatingMode) {
+        dom.switchOperatingMode.addEventListener('change', handleModeChange);
+    }
+
+    if (dom.btnTogglePump) {
+        dom.btnTogglePump.addEventListener('click', handlePumpToggle);
+    }
 
     // Ambil data pertama kali saat dimuat
     fetchDashboardData();
@@ -130,26 +184,37 @@ async function fetchDashboardData(isManual = false) {
 
         const response = await fetch(`${API_BASE}/get_dashboard.php?t=${Date.now()}`);
         
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+        let result;
+        try {
+            result = await response.json();
+        } catch (_) {
+            throw new Error(`Respon server tidak valid (HTTP ${response.status})`);
         }
 
-        const result = await response.json();
-
-        if (result.status === 'success' && result.data) {
+        if (response.ok && result.status === 'success' && result.data) {
+            appState.isDemoMode = false;
+            appState.hasRenderedOnce = true;
+            if (dom.connectionAlert) {
+                dom.connectionAlert.classList.add('d-none');
+            }
             updateDashboardUI(result.data);
             if (isManual) {
                 showToast('Data berhasil diperbarui dari server.', 'success');
             }
         } else {
-            console.warn('Gagal memproses data:', result.message);
+            const msg = result?.message || `HTTP error ${response.status}`;
+            console.warn('Gagal memproses data:', msg);
+            handleOfflineFallback(msg);
+            if (isManual) {
+                showToast(msg, 'danger');
+            }
         }
 
     } catch (error) {
         console.error('Koneksi backend error:', error);
-        updateOfflineUI(error.message);
+        handleOfflineFallback(error.message);
         if (isManual) {
-            showToast('Gagal terhubung ke backend atau database.', 'danger');
+            showToast(error.message || 'Gagal terhubung ke backend atau database.', 'danger');
         }
     } finally {
         if (isManual) {
@@ -309,6 +374,20 @@ function syncControlsUI(mode, pumpStatus) {
 // ============================================================================
 async function handleModeChange(event) {
     const newMode = event.target.checked ? 'MANUAL' : 'AUTO';
+
+    // Jika sedang dalam Mode Demo / Backend belum terkoneksi, simulasikan perubahan di UI langsung
+    if (appState.isDemoMode) {
+        appState.operatingMode = newMode;
+        renderControls(appState.operatingMode, appState.pumpStatus);
+        dom.valModeBadge.className = `badge fs-6 px-3 py-2 rounded-pill ${newMode === 'AUTO' ? 'bg-success' : 'bg-warning text-dark'}`;
+        dom.valModeBadge.textContent = newMode;
+        dom.modeDescription.textContent = (newMode === 'AUTO') 
+            ? 'Sistem bekerja otomatis sesuai sensor.' 
+            : 'Kontrol pompa sepenuhnya manual.';
+        showToast(`Mode operasi diubah ke ${newMode === 'AUTO' ? 'Otomatis' : 'Manual'} (Simulasi Mode Demo).`, 'warning');
+        return;
+    }
+
     dom.switchOperatingMode.disabled = true;
 
     try {
@@ -321,10 +400,18 @@ async function handleModeChange(event) {
             })
         });
 
-        const result = await response.json();
+        let result;
+        try {
+            result = await response.json();
+        } catch (_) {
+            throw new Error(`Respon server tidak valid (HTTP ${response.status})`);
+        }
 
         if (response.ok && result.status === 'success') {
             appState.operatingMode = newMode;
+            if (result.data && result.data.mac_address) {
+                appState.macAddress = result.data.mac_address;
+            }
             showToast(`Mode operasi berhasil diubah ke ${newMode === 'AUTO' ? 'Otomatis' : 'Manual'}.`, 'success');
             fetchDashboardData();
         } else {
@@ -352,6 +439,15 @@ async function handlePumpToggle() {
 
     const nextStatus = (appState.pumpStatus === 'ON') ? 'OFF' : 'ON';
 
+    // Jika sedang dalam Mode Demo / Backend belum terkoneksi, simulasikan toggle pompa di UI langsung
+    if (appState.isDemoMode) {
+        appState.pumpStatus = nextStatus;
+        renderPumpStatus(nextStatus);
+        renderControls(appState.operatingMode, nextStatus);
+        showToast(`Pompa berhasil ${nextStatus === 'ON' ? 'dinyalakan (ON)' : 'dimatikan (OFF)'} (Simulasi Mode Demo).`, 'warning');
+        return;
+    }
+
     // Tampilkan loading spinner pada tombol
     dom.btnTogglePump.disabled = true;
     dom.pumpSpinner.classList.remove('d-none');
@@ -366,10 +462,18 @@ async function handlePumpToggle() {
             })
         });
 
-        const result = await response.json();
+        let result;
+        try {
+            result = await response.json();
+        } catch (_) {
+            throw new Error(`Respon server tidak valid (HTTP ${response.status})`);
+        }
 
         if (response.ok && result.status === 'success') {
             appState.pumpStatus = nextStatus;
+            if (result.data && result.data.mac_address) {
+                appState.macAddress = result.data.mac_address;
+            }
             showToast(`Pompa berhasil ${nextStatus === 'ON' ? 'dinyalakan (ON)' : 'dimatikan (OFF)'}.`, 'success');
             fetchDashboardData();
         } else {
@@ -492,13 +596,34 @@ function getRelativeTime(dateStr) {
 }
 
 // ============================================================================
+// PENANGANAN FALLBACK DEMO / OFFLINE
+// Memastikan UI tetap dapat tampil, responsif, dan interaktif meskipun server belum menyala
+// ============================================================================
+function handleOfflineFallback(errorMessage) {
+    appState.isDemoMode = true;
+
+    // Tampilkan banner peringatan koneksi
+    if (dom.connectionAlert) {
+        dom.connectionAlert.classList.remove('d-none');
+    }
+
+    // Jika data belum pernah dirender sama sekali, render data simulasi
+    if (!appState.hasRenderedOnce) {
+        appState.hasRenderedOnce = true;
+        updateDashboardUI(FALLBACK_DEMO_DATA);
+    }
+
+    updateOfflineUI(errorMessage);
+}
+
+// ============================================================================
 // UI KETIKA BACKEND / DATABASE TERPUTUS
 // ============================================================================
 function updateOfflineUI(errorMessage) {
     dom.pulseDot.className = 'pulse-dot offline me-1';
-    dom.onlineStatusBadge.className = 'badge bg-danger px-3 py-2 rounded-pill shadow-sm';
-    dom.onlineStatusText.textContent = 'Server Offline';
-    dom.valLastSyncDiff.textContent = 'Gagal terhubung ke database';
+    dom.onlineStatusBadge.className = 'badge bg-warning text-dark px-3 py-2 rounded-pill shadow-sm';
+    dom.onlineStatusText.textContent = 'Server Belum Terhubung (Demo)';
+    dom.valLastSyncDiff.textContent = 'Menampilkan data simulasi visual';
 }
 
 // ============================================================================

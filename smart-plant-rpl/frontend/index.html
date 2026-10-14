@@ -27,6 +27,9 @@
                 </div>
             </div>
             <div class="d-flex align-items-center mt-2 mt-md-0 gap-2">
+                <a href="../tests/index.html" class="btn btn-sm btn-outline-light rounded-pill px-3 shadow-sm" title="Buka Unit Test Runner">
+                    <i class="bi bi-shield-check me-1"></i> Unit Tests
+                </a>
                 <span id="deviceBadge" class="badge bg-light text-dark px-3 py-2 rounded-pill shadow-sm">
                     <i class="bi bi-cpu me-1 text-success"></i>
                     <span id="deviceName">Memuat perangkat...</span>
@@ -42,6 +45,19 @@
     <!-- Main Container -->
     <main class="container my-4">
         
+        <!-- Alert Banner Koneksi / Mode Demo Fallback -->
+        <div id="connectionAlert" class="alert alert-warning border-warning-subtle d-flex align-items-center justify-content-between mb-3 shadow-sm rounded-3 d-none">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-exclamation-triangle-fill fs-5 text-warning me-2"></i>
+                <div>
+                    <strong>Mode Pratinjau Demo:</strong> Backend PHP / MySQL belum terhubung. Menampilkan simulasi data agar UI tetap tampil dan dapat diuji. Jalankan Apache & MySQL di XAMPP / Laragon untuk beralih ke data langsung secara otomatis.
+                </div>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-dark ms-3 text-nowrap" id="btnRetryConnection">
+                <i class="bi bi-arrow-repeat me-1"></i> Coba Hubungkan
+            </button>
+        </div>
+
         <!-- Bar Status Auto-Refresh & Refresh Manual -->
         <div class="d-flex justify-content-between align-items-center mb-3">
             <div class="text-muted small">

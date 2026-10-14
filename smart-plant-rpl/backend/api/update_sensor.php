@@ -25,6 +25,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'POST') !== 'POST') {
 }
 
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../helpers/PlantLogic.php';
 
 // Ambil input data dari JSON body atau $_POST form data
 $raw_input = file_get_contents("php://input");
@@ -89,15 +90,11 @@ try {
     $stmt_log->bindParam(':moisture_level', $moisture_level);
     $stmt_log->execute();
 
-    // 3. Logika Otomatisasi jika mode AUTO:
-    // Jika kelembapan tanah < 35%, nyalakan pompa otomatis
-    // Jika kelembapan tanah >= 40%, matikan pompa
+    // 3. Logika Otomatisasi jika mode AUTO menggunakan PlantLogic helper:
+    // Jika kelembapan tanah < 35%, nyalakan pompa otomatis (ON)
+    // Jika kelembapan tanah >= 35%, matikan pompa (OFF)
     if ($operating_mode === 'AUTO') {
-        if ($moisture_level < 35.0) {
-            $pump_status = 'ON';
-        } else {
-            $pump_status = 'OFF';
-        }
+        $pump_status = PlantLogic::evaluateAutoPump('AUTO', $moisture_level);
     }
 
     // 4. Perbarui `last_seen` dan `pump_status` pada tabel `devices`
