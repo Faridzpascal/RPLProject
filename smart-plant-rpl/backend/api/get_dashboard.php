@@ -18,6 +18,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
 }
 
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../helpers/PlantLogic.php';
 
 $database = new Database();
 $db = $database->getConnection();
@@ -36,10 +37,10 @@ try {
 
     $device_id = (int)$device['id'];
 
-    // Hitung status online ESP32 (jika last_seen < 30 detik yang lalu dianggap online)
+    // Hitung status online ESP32 menggunakan PlantLogic helper
     $last_seen_timestamp = strtotime($device['last_seen']);
     $time_difference = time() - $last_seen_timestamp;
-    $is_online = ($time_difference <= 30);
+    $is_online = PlantLogic::isOnline($device['last_seen']);
 
     // 2. Ambil log sensor terbaru (Kelembapan saat ini)
     $stmt_latest = $db->prepare("SELECT moisture_level, created_at FROM sensor_logs WHERE device_id = :device_id ORDER BY id DESC LIMIT 1");
@@ -47,7 +48,7 @@ try {
     $stmt_latest->execute();
     $latest_log = $stmt_latest->fetch();
 
-    $current_moisture = $latest_log ? (float)$latest_log['moisture_level'] : 0.0;
+    $current_moisture = $latest_log ? PlantLogic::clampMoisture((float)$latest_log['moisture_level']) : 0.0;
     $last_moisture_time = $latest_log ? $latest_log['created_at'] : $device['last_seen'];
 
     // 3. Ambil 10 riwayat log sensor terakhir
@@ -56,20 +57,8 @@ try {
     $stmt_logs->execute();
     $logs = $stmt_logs->fetchAll();
 
-    // 4. Hitung statistik ringkas (rata-rata, minimum, maksimum)
-    $stats = [
-        "avg" => 0,
-        "min" => 0,
-        "max" => 0,
-        "count" => count($logs)
-    ];
-
-    if (!empty($logs)) {
-        $levels = array_column($logs, 'moisture_level');
-        $stats['avg'] = round(array_sum($levels) / count($levels), 1);
-        $stats['min'] = round(min($levels), 1);
-        $stats['max'] = round(max($levels), 1);
-    }
+    // 4. Hitung statistik ringkas menggunakan PlantLogic helper
+    $stats = PlantLogic::calculateStats(array_column($logs, 'moisture_level'));
 
     http_response_code(200);
     echo json_encode([
