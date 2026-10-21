@@ -1,0 +1,9 @@
+{
+  "css.lint.unknownAtRules": "ignore",
+  "files.associations": {
+    "*.ino": "cpp"
+  },
+  "clangd.fallbackFlags": [
+    "-xc++"
+  ]
+}
