@@ -212,6 +212,8 @@ async function fetchDashboardData(isManual = false) {
             return;
         }
 
+        const result = await response.json();
+
         if (response.ok && result.status === 'success' && result.data) {
             appState.isDemoMode = false;
             appState.hasRenderedOnce = true;
@@ -427,6 +429,8 @@ async function handleModeChange(event) {
             return;
         }
 
+        const result = await response.json();
+
         if (response.ok && result.status === 'success') {
             appState.operatingMode = newMode;
             if (result.data && result.data.mac_address) {
@@ -487,6 +491,8 @@ async function handlePumpToggle() {
             window.location.href = 'login.html';
             return;
         }
+
+        const result = await response.json();
 
         if (response.ok && result.status === 'success') {
             appState.pumpStatus = nextStatus;

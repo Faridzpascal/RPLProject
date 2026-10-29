@@ -1,8 +1,9 @@
-﻿# 🌱 Smart Plant Dashboard - Sistem Monitoring & Kontrol IoT
+# 🌱 Smart Plant Dashboard - Sistem Monitoring & Kontrol IoT
 > **Aplikasi Monitoring Kelembapan Tanah & Otomatisasi Penyiraman Berbasis IoT**  
 > *Mata Kuliah Rekayasa Perangkat Lunak (RPL) - Final MVP Release*
 
 [![Unit Tests](https://img.shields.io/badge/Unit%20Tests-58%20Passed%20(100%25)-success?style=flat-square&logo=php)](tests/index.html)
+[![Demo Video](https://img.shields.io/badge/Demo%20Video-demo.mp4%20(HD%20720p)-success?style=flat-square&logo=google-drive)](demo.mp4)
 [![Architecture](https://img.shields.io/badge/Architecture-REST%20API%20%2B%20SPA-blue?style=flat-square)](backend/api/)
 [![PHP](https://img.shields.io/badge/Backend-PHP%208%20Native%20PDO-777BB4?style=flat-square&logo=php)](backend/)
 [![Frontend](https://img.shields.io/badge/Frontend-HTML5%20%7C%20CSS3%20%7C%20Bootstrap%205-E34F26?style=flat-square&logo=bootstrap)](frontend/)

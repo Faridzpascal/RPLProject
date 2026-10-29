@@ -1,4 +1,4 @@
-﻿# 🌱 Panduan Menjalankan MVP Smart Plant Dashboard
+# 🌱 Panduan Menjalankan MVP Smart Plant Dashboard
 > **Sistem Monitoring Kelembapan Tanah & Otomatisasi Kontrol Pompa Berbasis IoT**  
 > *Mata Kuliah Rekayasa Perangkat Lunak (RPL) - Final MVP Release*
 
@@ -138,6 +138,7 @@ RPLProject/
 ├── esp32/
 │   └── smart_plant.ino           # Firmware Arduino C++ mikrokontroler ESP32
 ├── database.sql                  # Skrip pembuatan tabel database & data awal dummy
+├── demo.mp4                      # Video rekaman demo alur lengkap aplikasi (HD 720p)
 ├── HowToRun.md                   # Petunjuk lengkap menjalankan proyek
 ├── checklist_mvp.md              # Matriks kelengkapan fitur & hasil verifikasi testing
 ├── index.php                     # Redirector otomatis ke frontend/index.html
