@@ -4,24 +4,22 @@
  * Mengubah pump_status ('ON' atau 'OFF') secara manual dari dashboard
  */
 
-header("Access-Control-Allow-Origin: *");
-header("Content-Type: application/json; charset=UTF-8");
-header("Access-Control-Allow-Methods: POST, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
+require_once __DIR__ . '/../helpers/auth_check.php';
+require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../helpers/PlantLogic.php';
 
-if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
-    http_response_code(200);
-    exit();
-}
+// Atur header CORS & Session Cookie
+sendCorsHeaders();
+handleCorsPreflight();
+
+// Validasi Sesi Login Pengguna (Session Guard)
+requireAuth();
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'POST') !== 'POST') {
     http_response_code(405);
     echo json_encode(["status" => "error", "message" => "Metode HTTP tidak diizinkan. Gunakan POST."], JSON_UNESCAPED_UNICODE);
     exit();
 }
-
-require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../helpers/PlantLogic.php';
 
 $raw_input = file_get_contents("php://input");
 $data = json_decode($raw_input, true);

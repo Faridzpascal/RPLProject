@@ -67,6 +67,11 @@ const dom = {
     connectionAlert: document.getElementById('connectionAlert'),
     btnRetryConnection: document.getElementById('btnRetryConnection'),
 
+    // Autentikasi & Pengguna
+    btnLogout: document.getElementById('btnLogout'),
+    userBadge: document.getElementById('userBadge'),
+    navUsername: document.getElementById('navUsername'),
+
     // Kartu Status
     valMoisture: document.getElementById('valMoisture'),
     progressMoisture: document.getElementById('progressMoisture'),
@@ -117,12 +122,27 @@ let toastBootstrap = null;
 // INISIALISASI APLIKASI
 // ============================================================================
 document.addEventListener('DOMContentLoaded', () => {
-    // Inisialisasi Toast Bootstrap
-    if (dom.liveToast) {
+    // 1. Cek apakah halaman saat ini adalah Halaman Login (login.html)
+    if (document.getElementById('loginForm')) {
+        initLoginPage();
+        return;
+    }
+
+    // 2. Jika di Halaman Dashboard (index.html):
+    // Cek Session Guard terlebih dahulu
+    checkAuthSession();
+
+    // Inisialisasi Toast Bootstrap jika elemen ada
+    if (dom.liveToast && typeof bootstrap !== 'undefined' && bootstrap.Toast) {
         toastBootstrap = new bootstrap.Toast(dom.liveToast, { delay: 3500 });
     }
 
-    // Pasang Event Listener
+    // Pasang Event Listener Tombol Logout
+    if (dom.btnLogout) {
+        dom.btnLogout.addEventListener('click', handleLogout);
+    }
+
+    // Pasang Event Listener Refresh & Kontrol
     if (dom.btnManualRefresh) {
         dom.btnManualRefresh.addEventListener('click', () => {
             appState.countdown = REFRESH_INTERVAL_SECONDS;
@@ -182,13 +202,14 @@ async function fetchDashboardData(isManual = false) {
             dom.btnManualRefresh.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> Menyinkronkan...`;
         }
 
-        const response = await fetch(`${API_BASE}/get_dashboard.php?t=${Date.now()}`);
-        
-        let result;
-        try {
-            result = await response.json();
-        } catch (_) {
-            throw new Error(`Respon server tidak valid (HTTP ${response.status})`);
+        const response = await fetch(`${API_BASE}/get_dashboard.php?t=${Date.now()}`, {
+            credentials: 'include'
+        });
+
+        if (response.status === 401) {
+            console.warn('Sesi tidak aktif atau telah berakhir. Mengalihkan ke login.html...');
+            window.location.href = 'login.html';
+            return;
         }
 
         if (response.ok && result.status === 'success' && result.data) {
@@ -394,17 +415,16 @@ async function handleModeChange(event) {
         const response = await fetch(`${API_BASE}/update_mode.php`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify({
                 mac_address: appState.macAddress,
                 operating_mode: newMode
             })
         });
 
-        let result;
-        try {
-            result = await response.json();
-        } catch (_) {
-            throw new Error(`Respon server tidak valid (HTTP ${response.status})`);
+        if (response.status === 401) {
+            window.location.href = 'login.html';
+            return;
         }
 
         if (response.ok && result.status === 'success') {
@@ -456,17 +476,16 @@ async function handlePumpToggle() {
         const response = await fetch(`${API_BASE}/update_pump.php`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify({
                 mac_address: appState.macAddress,
                 pump_status: nextStatus
             })
         });
 
-        let result;
-        try {
-            result = await response.json();
-        } catch (_) {
-            throw new Error(`Respon server tidak valid (HTTP ${response.status})`);
+        if (response.status === 401) {
+            window.location.href = 'login.html';
+            return;
         }
 
         if (response.ok && result.status === 'success') {
@@ -647,3 +666,190 @@ function showToast(message, type = 'success') {
 
     toastBootstrap.show();
 }
+
+// ============================================================================
+// LOGIKA AUTENTIKASI & MANAJEMEN SESI (AUTH GUARD & SESSION)
+// ============================================================================
+
+/**
+ * Memvalidasi apakah sesi login pengguna saat ini aktif di server.
+ * Jika belum login (401), secara otomatis redirect ke login.html.
+ */
+async function checkAuthSession() {
+    try {
+        const response = await fetch(`${API_BASE}/check_session.php?t=${Date.now()}`, {
+            credentials: 'include'
+        });
+
+        if (response.status === 401) {
+            console.warn('Sesi tidak aktif atau telah berakhir. Mengalihkan ke login.html...');
+            window.location.href = 'login.html';
+            return false;
+        }
+
+        let result;
+        try {
+            result = await response.json();
+        } catch (_) {
+            return false;
+        }
+
+        if (response.ok && result.authenticated) {
+            if (dom.userBadge && dom.navUsername) {
+                dom.navUsername.textContent = result.user?.username || 'admin';
+                dom.userBadge.classList.remove('d-none');
+            }
+            return true;
+        } else {
+            window.location.href = 'login.html';
+            return false;
+        }
+    } catch (err) {
+        // Jika server backend offline sama sekali, fetchDashboardData akan menangani mode fallback demo
+        console.warn('Gagal memvalidasi sesi via check_session (server offline):', err);
+        return null;
+    }
+}
+
+/**
+ * Handler proses logout: Menghancurkan sesi di backend dan redirect ke login.html.
+ */
+async function handleLogout() {
+    if (dom.btnLogout) {
+        dom.btnLogout.disabled = true;
+        dom.btnLogout.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> Keluar...`;
+    }
+
+    try {
+        await fetch(`${API_BASE}/logout.php`, {
+            method: 'POST',
+            credentials: 'include'
+        });
+    } catch (err) {
+        console.warn('Logout request warning:', err);
+    } finally {
+        window.location.href = 'login.html';
+    }
+}
+
+/**
+ * Inisialisasi Event Listener & Logika untuk Halaman Login (login.html)
+ */
+function initLoginPage() {
+    const loginForm = document.getElementById('loginForm');
+    const usernameInput = document.getElementById('username');
+    const passwordInput = document.getElementById('password');
+    const btnLogin = document.getElementById('btnLogin');
+    const loginBtnSpinner = document.getElementById('loginBtnSpinner');
+    const loginBtnIcon = document.getElementById('loginBtnIcon');
+    const loginBtnText = document.getElementById('loginBtnText');
+    const loginAlert = document.getElementById('loginAlert');
+    const loginAlertText = document.getElementById('loginAlertText');
+    const btnTogglePassword = document.getElementById('btnTogglePassword');
+    const togglePasswordIcon = document.getElementById('togglePasswordIcon');
+    const btnAutofillDemo = document.getElementById('btnAutofillDemo');
+
+    // 1. Cek jika sesi sudah aktif, langsung alihkan ke index.html
+    fetch(`${API_BASE}/check_session.php?t=${Date.now()}`, { credentials: 'include' })
+        .then(res => res.json())
+        .then(data => {
+            if (data && data.authenticated) {
+                window.location.href = 'index.html';
+            }
+        })
+        .catch(() => {});
+
+    // 2. Tombol Show/Hide Password
+    if (btnTogglePassword && passwordInput) {
+        btnTogglePassword.addEventListener('click', () => {
+            const isPassword = passwordInput.getAttribute('type') === 'password';
+            passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
+            if (togglePasswordIcon) {
+                togglePasswordIcon.className = isPassword ? 'bi bi-eye-slash' : 'bi bi-eye';
+            }
+        });
+    }
+
+    // 3. Tombol Autofill Akun Demo
+    if (btnAutofillDemo && usernameInput && passwordInput) {
+        btnAutofillDemo.addEventListener('click', () => {
+            usernameInput.value = 'admin';
+            passwordInput.value = 'password123';
+            hideLoginError();
+            usernameInput.focus();
+        });
+    }
+
+    // 4. Handler Submit Form Login
+    if (loginForm) {
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const username = (usernameInput.value || '').trim();
+            const password = passwordInput.value || '';
+
+            if (!username || !password) {
+                showLoginError('Username dan password wajib diisi.');
+                return;
+            }
+
+            // Tampilkan status proses
+            btnLogin.disabled = true;
+            if (loginBtnSpinner) loginBtnSpinner.classList.remove('d-none');
+            if (loginBtnIcon) loginBtnIcon.classList.add('d-none');
+            if (loginBtnText) loginBtnText.textContent = 'Memverifikasi...';
+            hideLoginError();
+
+            try {
+                const response = await fetch(`${API_BASE}/login.php`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ username, password })
+                });
+
+                let result;
+                try {
+                    result = await response.json();
+                } catch (_) {
+                    throw new Error(`Respon server tidak valid (HTTP ${response.status})`);
+                }
+
+                if (response.ok && result.status === 'success') {
+                    if (loginBtnText) loginBtnText.textContent = 'Berhasil! Mengalihkan...';
+                    setTimeout(() => {
+                        window.location.href = 'index.html';
+                    }, 400);
+                } else {
+                    showLoginError(result.message || 'Username atau password salah.');
+                    resetLoginButton();
+                }
+            } catch (err) {
+                console.error('Login error:', err);
+                showLoginError(err.message || 'Gagal terhubung ke backend server.');
+                resetLoginButton();
+            }
+        });
+    }
+
+    function resetLoginButton() {
+        btnLogin.disabled = false;
+        if (loginBtnSpinner) loginBtnSpinner.classList.add('d-none');
+        if (loginBtnIcon) loginBtnIcon.classList.remove('d-none');
+        if (loginBtnText) loginBtnText.textContent = 'Masuk ke Dashboard';
+    }
+
+    function showLoginError(msg) {
+        if (loginAlert && loginAlertText) {
+            loginAlertText.textContent = msg;
+            loginAlert.classList.remove('d-none');
+        }
+    }
+
+    function hideLoginError() {
+        if (loginAlert) {
+            loginAlert.classList.add('d-none');
+        }
+    }
+}
+

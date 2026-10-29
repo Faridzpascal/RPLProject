@@ -13,9 +13,10 @@ require_once __DIR__ . '/AutoWateringLogicTest.php';
 require_once __DIR__ . '/PumpSafetyGuardTest.php';
 require_once __DIR__ . '/SensorLogStatisticsTest.php';
 require_once __DIR__ . '/DeviceConnectivityTest.php';
+require_once __DIR__ . '/AuthenticationTest.php';
 
 echo "\n" . str_repeat("=", 75) . "\n";
-echo " 🌱 SMART PLANT DASHBOARD - 5 MVP UNIT TEST SUITES (PERTEMUAN 5 RPL)\n";
+echo " 🌱 SMART PLANT DASHBOARD - UNIT TEST SUITES (PERTEMUAN 5 RPL + AUTH)\n";
 echo str_repeat("=", 75) . "\n\n";
 
 $startTime = microtime(true);
@@ -24,7 +25,8 @@ $suites = [
     'US-2: Otomatisasi Penyiraman Cerdas (Mode AUTO)' => new AutoWateringLogicTest(),
     'US-3: Kontrol Pompa Manual & Safety Guard'       => new PumpSafetyGuardTest(),
     'US-4: Riwayat Log Sensor & Agregat Statistik'    => new SensorLogStatisticsTest(),
-    'US-5: Deteksi Heartbeat & Status Konektivitas'   => new DeviceConnectivityTest()
+    'US-5: Deteksi Heartbeat & Status Konektivitas'   => new DeviceConnectivityTest(),
+    'US-AUTH: Autentikasi Pengguna & Session Guard'   => new AuthenticationTest()
 ];
 
 $totalTestMethods = 0;

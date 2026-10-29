@@ -15,6 +15,7 @@ USE `smart_plant_db`;
 SET FOREIGN_KEY_CHECKS = 0;
 DROP TABLE IF EXISTS `sensor_logs`;
 DROP TABLE IF EXISTS `devices`;
+DROP TABLE IF EXISTS `users`;
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- 3. Tabel `devices`
@@ -44,7 +45,16 @@ CREATE TABLE `sensor_logs` (
         ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 5. Data Awal (Dummy Data) untuk Pengujian Dashboard
+-- 5. Tabel `users`
+-- Menyimpan kredensial pengguna terdaftar untuk autentikasi dashboard web
+CREATE TABLE `users` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `username` VARCHAR(50) NOT NULL UNIQUE COMMENT 'Username unik akun web dashboard',
+    `password` VARCHAR(255) NOT NULL COMMENT 'Password yang di-hash dengan password_hash() / BCRYPT',
+    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Waktu akun dibuat'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 6. Data Awal (Dummy Data) untuk Pengujian Dashboard
 -- Masukkan 1 perangkat ESP32 default
 INSERT INTO `devices` (`id`, `mac_address`, `name`, `operating_mode`, `pump_status`, `last_seen`)
 VALUES (1, '24:6F:28:7A:B1:C0', 'ESP32 - Tanaman Monstera', 'AUTO', 'OFF', NOW());
@@ -61,3 +71,8 @@ INSERT INTO `sensor_logs` (`device_id`, `moisture_level`, `created_at`) VALUES
 (1, 28.0, DATE_SUB(NOW(), INTERVAL 10 MINUTE)),
 (1, 55.4, DATE_SUB(NOW(), INTERVAL 5 MINUTE)),
 (1, 52.8, NOW());
+
+-- Masukkan 1 pengguna default untuk autentikasi dashboard (admin / password123)
+-- Password terenkripsi via password_hash('password123', PASSWORD_BCRYPT)
+INSERT INTO `users` (`id`, `username`, `password`, `created_at`) VALUES
+(1, 'admin', '$2y$12$FVRgDUmZukpReJZEGremT.PzzXSfs8HdPd00eftDO.KpvpXuQwQra', NOW());
