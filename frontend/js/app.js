@@ -429,14 +429,29 @@ function renderMoistureChart(logs) {
     const gridColor = isDark ? 'rgba(148, 163, 184, 0.12)' : 'rgba(15, 23, 42, 0.06)';
     const tickColor = isDark ? '#94a3b8' : '#64748b';
 
+    const pointColors = values.map(v => v < 35 ? '#f43f5e' : (v > 70 ? '#0ea5e9' : '#10b981'));
+    const pointBorder = isDark ? '#111822' : '#ffffff';
+
+    if (moistureChartInstance) {
+        moistureChartInstance.data.labels = labels;
+        moistureChartInstance.data.datasets[0].data = values;
+        moistureChartInstance.data.datasets[0].pointBackgroundColor = pointColors;
+        moistureChartInstance.data.datasets[0].pointBorderColor = pointBorder;
+        moistureChartInstance.data.datasets[1].data = thresholdLine;
+
+        moistureChartInstance.options.scales.x.ticks.color = tickColor;
+        moistureChartInstance.options.scales.y.ticks.color = tickColor;
+        moistureChartInstance.options.scales.y.grid.color = gridColor;
+        moistureChartInstance.options.plugins.tooltip.backgroundColor = isDark ? '#1e293b' : '#0f172a';
+
+        moistureChartInstance.update('none');
+        return;
+    }
+
     const ctx = dom.moistureChartCanvas.getContext('2d');
     const gradient = ctx.createLinearGradient(0, 0, 0, 240);
     gradient.addColorStop(0, 'rgba(16, 185, 129, 0.35)');
     gradient.addColorStop(1, 'rgba(16, 185, 129, 0.0)');
-
-    if (moistureChartInstance) {
-        moistureChartInstance.destroy();
-    }
 
     moistureChartInstance = new Chart(ctx, {
         type: 'line',
@@ -449,8 +464,8 @@ function renderMoistureChart(logs) {
                     borderColor: '#10b981',
                     backgroundColor: gradient,
                     borderWidth: 2.5,
-                    pointBackgroundColor: values.map(v => v < 35 ? '#f43f5e' : (v > 70 ? '#0ea5e9' : '#10b981')),
-                    pointBorderColor: isDark ? '#111822' : '#ffffff',
+                    pointBackgroundColor: pointColors,
+                    pointBorderColor: pointBorder,
                     pointBorderWidth: 2,
                     pointRadius: 4.5,
                     pointHoverRadius: 6.5,
