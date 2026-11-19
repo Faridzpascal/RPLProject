@@ -18,6 +18,7 @@ let appState = {
     isUpdating: false,
     countdown: REFRESH_INTERVAL_SECONDS,
     isDemoMode: false,
+    isAuthenticated: false,
     hasRenderedOnce: false,
     lastLogs: []
 };
@@ -132,7 +133,7 @@ const dom = {
 // ============================================================================
 // INISIALISASI APLIKASI
 // ============================================================================
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     // Inisialisasi Tema Gelap / Terang
     initThemeToggle();
 
@@ -143,7 +144,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // 2. Jika di Halaman Dashboard (index.html):
-    checkAuthSession();
+    // Tunggu validasi sesi selesai sebelum mengambil data dashboard
+    const authState = await checkAuthSession();
+    if (authState === false) {
+        return;
+    }
 
     if (dom.liveToast && typeof bootstrap !== 'undefined' && bootstrap.Toast) {
         toastBootstrap = new bootstrap.Toast(dom.liveToast, { delay: 3500 });
@@ -175,8 +180,14 @@ document.addEventListener('DOMContentLoaded', () => {
         dom.btnTogglePump.addEventListener('click', handlePumpToggle);
     }
 
+    // Jika server offline (authState === null) di luar mode lokal file://, jangan bypass ke dashboard
+    if (authState === null && window.location.protocol !== 'file:') {
+        handleOfflineFallback('Gagal memvalidasi sesi dengan server.');
+        return;
+    }
+
     // Ambil data pertama kali saat dimuat
-    fetchDashboardData();
+    await fetchDashboardData();
 
     // Mulai Timer Countdown & Auto-Refresh setiap 1 detik
     setInterval(handleTimerTick, 1000);
@@ -757,26 +768,39 @@ function getRelativeTime(dateStr) {
 // ============================================================================
 // PENANGANAN FALLBACK DEMO / OFFLINE
 // ============================================================================
+function isLocalDemoAllowed() {
+    const isFileProtocol = window.location.protocol === 'file:';
+    const isLocalHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+    return isFileProtocol || (appState.isAuthenticated && isLocalHost);
+}
+
 function handleOfflineFallback(errorMessage) {
-    appState.isDemoMode = true;
+    const allowDemo = isLocalDemoAllowed();
+    appState.isDemoMode = allowDemo;
 
     if (dom.connectionAlert) {
         dom.connectionAlert.classList.remove('d-none');
     }
 
-    if (!appState.hasRenderedOnce) {
+    if (allowDemo && !appState.hasRenderedOnce) {
         appState.hasRenderedOnce = true;
         updateDashboardUI(FALLBACK_DEMO_DATA);
     }
 
-    updateOfflineUI(errorMessage);
+    updateOfflineUI(errorMessage, allowDemo);
 }
 
-function updateOfflineUI() {
+function updateOfflineUI(errorMessage = '', isDemo = true) {
     dom.pulseDot.className = 'pulse-dot offline';
-    dom.onlineStatusBadge.className = 'badge bg-warning-subtle text-warning border border-warning-subtle px-3 py-2 rounded-pill d-inline-flex align-items-center gap-2';
-    dom.onlineStatusText.textContent = 'Mode Demo (Offline)';
-    dom.valLastSyncDiff.textContent = 'Menampilkan data simulasi visual';
+    if (isDemo) {
+        dom.onlineStatusBadge.className = 'badge bg-warning-subtle text-warning border border-warning-subtle px-3 py-2 rounded-pill d-inline-flex align-items-center gap-2';
+        dom.onlineStatusText.textContent = 'Mode Demo (Offline)';
+        dom.valLastSyncDiff.textContent = 'Menampilkan data simulasi visual';
+    } else {
+        dom.onlineStatusBadge.className = 'badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-2 rounded-pill d-inline-flex align-items-center gap-2';
+        dom.onlineStatusText.textContent = 'Server Bermasalah';
+        dom.valLastSyncDiff.textContent = errorMessage || 'Gagal terhubung ke server';
+    }
 }
 
 // ============================================================================
@@ -808,6 +832,7 @@ async function checkAuthSession() {
         });
 
         if (response.status === 401) {
+            appState.isAuthenticated = false;
             console.warn('Sesi tidak aktif atau telah berakhir. Mengalihkan ke login.html...');
             window.location.href = 'login.html';
             return false;
@@ -817,20 +842,24 @@ async function checkAuthSession() {
         try {
             result = await response.json();
         } catch (_) {
+            appState.isAuthenticated = false;
             return false;
         }
 
         if (response.ok && result.authenticated) {
+            appState.isAuthenticated = true;
             if (dom.userBadge && dom.navUsername) {
                 dom.navUsername.textContent = result.user?.username || 'admin';
                 dom.userBadge.classList.remove('d-none');
             }
             return true;
         } else {
+            appState.isAuthenticated = false;
             window.location.href = 'login.html';
             return false;
         }
     } catch (err) {
+        appState.isAuthenticated = false;
         console.warn('Gagal memvalidasi sesi via check_session (server offline):', err);
         return null;
     }
