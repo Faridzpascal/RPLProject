@@ -37,7 +37,19 @@ Pastikan perangkat Anda telah terinstal salah satu lingkungan berikut:
    - Folder proyek berada di direktori `htdocs`, contoh:
      `C:\xampp\htdocs\RPLProject` atau `C:\xampp\htdocs\smart-plant-rpl`
 
-4. **Buka Web Dashboard:**
+4. **Buat Akun Administrator Baru (Instalasi Baru):**
+   - Demi keamanan, skrip `database.sql` tidak lagi menyertakan akun atau password default.
+   - Buat password yang kuat (minimal 12 karakter, kombinasi huruf besar, kecil, angka, dan simbol), lalu hasilkan hash bcrypt melalui terminal PHP CLI:
+     ```powershell
+     php -r "echo password_hash('GantiDenganPasswordKuatAnda!', PASSWORD_BCRYPT) . PHP_EOL;"
+     ```
+   - Salin hasil hash tersebut, lalu masukkan akun administrator baru ke tabel `users` melalui phpMyAdmin (tab **SQL**) atau MySQL CLI:
+     ```sql
+     INSERT INTO `users` (`username`, `password`)
+     VALUES ('nama_admin_anda', '<TEMPEL_HASH_BCRYPT_DI_SINI>');
+     ```
+
+5. **Buka Web Dashboard:**
    - Buka browser dan akses salah satu URL berikut:
      ```
      http://localhost/RPLProject/

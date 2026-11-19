@@ -66,7 +66,7 @@ INSERT INTO `sensor_logs` (`device_id`, `moisture_level`, `created_at`) VALUES
 (1, 55.4, DATE_SUB(NOW(), INTERVAL 5 MINUTE)),
 (1, 52.8, NOW());
 
--- Masukkan 1 pengguna default untuk autentikasi dashboard (admin / password123)
--- Password terenkripsi via password_hash('password123', PASSWORD_BCRYPT)
-INSERT INTO `users` (`id`, `username`, `password`, `created_at`) VALUES
-(1, 'admin', '$2y$12$FVRgDUmZukpReJZEGremT.PzzXSfs8HdPd00eftDO.KpvpXuQwQra', NOW());
+-- Catatan Keamanan:
+-- Akun administrator tidak dibuat otomatis dengan password default.
+-- Buat akun administrator baru menggunakan hash dari password_hash() PHP
+-- sesuai panduan pada HowToRun.md sebelum membuka halaman login.

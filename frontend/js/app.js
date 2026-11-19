@@ -866,7 +866,6 @@ function initLoginPage() {
     const loginAlertText = document.getElementById('loginAlertText');
     const btnTogglePassword = document.getElementById('btnTogglePassword');
     const togglePasswordIcon = document.getElementById('togglePasswordIcon');
-    const btnAutofillDemo = document.getElementById('btnAutofillDemo');
 
     // 1. Cek jika sesi sudah aktif, langsung alihkan ke index.html
     fetch(`${API_BASE}/check_session.php?t=${Date.now()}`, { credentials: 'include' })
@@ -889,17 +888,7 @@ function initLoginPage() {
         });
     }
 
-    // 3. Tombol Autofill Akun Demo
-    if (btnAutofillDemo && usernameInput && passwordInput) {
-        btnAutofillDemo.addEventListener('click', () => {
-            usernameInput.value = 'admin';
-            passwordInput.value = 'password123';
-            hideLoginError();
-            usernameInput.focus();
-        });
-    }
-
-    // 4. Handler Submit Form Login
+    // 3. Handler Submit Form Login
     if (loginForm) {
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
