@@ -25,6 +25,9 @@ const char* WIFI_PASSWORD = "PASSWORD_WIFI_ANDA";
 // (Gunakan perintah 'ipconfig' di Command Prompt Windows untuk melihat IP laptop)
 const char* SERVER_BASE_URL = "http://192.168.1.10/smart-plant-rpl/backend/api";
 
+// API Key perangkat (harus sama dengan DEVICE_API_KEY di server backend)
+const char* DEVICE_API_KEY  = "smartplant-dev-device-key-change-me";
+
 // URL Endpoint API
 String urlUpdateSensor = String(SERVER_BASE_URL) + "/update_sensor.php";
 String urlGetStatus    = String(SERVER_BASE_URL) + "/get_status.php";
@@ -223,6 +226,7 @@ void sendSensorData(float moisture) {
     HTTPClient http;
     http.begin(urlUpdateSensor);
     http.addHeader("Content-Type", "application/json");
+    http.addHeader("X-API-Key", DEVICE_API_KEY);
 
     // Bentuk JSON payload secara manual tanpa dependensi library eksternal
     String jsonPayload = "{\"mac_address\":\"" + macAddress + "\",\"moisture_level\":" + String(moisture, 2) + "}";
@@ -264,6 +268,7 @@ void checkServerStatus() {
     String requestUrl = urlGetStatus + "?mac_address=" + macAddress;
 
     http.begin(requestUrl);
+    http.addHeader("X-API-Key", DEVICE_API_KEY);
     int httpResponseCode = http.GET();
 
     if (httpResponseCode == 200) {

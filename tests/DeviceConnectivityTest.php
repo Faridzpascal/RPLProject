@@ -7,6 +7,7 @@
 
 require_once __DIR__ . '/TestCase.php';
 require_once __DIR__ . '/../backend/helpers/PlantLogic.php';
+require_once __DIR__ . '/../backend/helpers/device_auth.php';
 
 class DeviceConnectivityTest extends TestCase {
 
@@ -56,5 +57,25 @@ class DeviceConnectivityTest extends TestCase {
         $now = 50000;
         $seconds = PlantLogic::getSecondsSinceLastSeen($now - 20, $now);
         $this->assertEquals(20, $seconds, 'Selisih detik harus tepat 20 detik');
+    }
+
+    /**
+     * AC-5.5: Validasi X-API-Key perangkat IoT (ESP32)
+     */
+    public function testDeviceApiKeyValidation(): void {
+        $previous = getenv('DEVICE_API_KEY');
+        putenv('DEVICE_API_KEY=test-secret-esp32-key');
+
+        try {
+            $this->assertTrue(isValidDeviceApiKey('test-secret-esp32-key'), 'API key yang cocok harus diterima');
+            $this->assertFalse(isValidDeviceApiKey('wrong-key'), 'API key yang salah harus ditolak');
+            $this->assertFalse(isValidDeviceApiKey(''), 'API key kosong harus ditolak');
+        } finally {
+            if ($previous === false) {
+                putenv('DEVICE_API_KEY');
+            } else {
+                putenv("DEVICE_API_KEY={$previous}");
+            }
+        }
     }
 }

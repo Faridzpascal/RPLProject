@@ -7,7 +7,7 @@
 header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json; charset=UTF-8");
 header("Access-Control-Allow-Methods: POST, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
+header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With, X-API-Key");
 
 // Handle CORS Preflight request
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
@@ -23,6 +23,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'POST') !== 'POST') {
     ], JSON_UNESCAPED_UNICODE);
     exit();
 }
+
+require_once __DIR__ . '/../helpers/device_auth.php';
+requireDeviceApiKey();
 
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../helpers/PlantLogic.php';
