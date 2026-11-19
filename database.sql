@@ -20,7 +20,7 @@ CREATE TABLE `devices` (
     `name` VARCHAR(100) NOT NULL COMMENT 'Nama label tanaman/perangkat',
     `operating_mode` ENUM('AUTO', 'MANUAL') NOT NULL DEFAULT 'AUTO' COMMENT 'Mode kerja: AUTO (otomatis) / MANUAL',
     `pump_status` ENUM('ON', 'OFF') NOT NULL DEFAULT 'OFF' COMMENT 'Status pompa relay: ON / OFF',
-    `last_seen` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Waktu terakhir ESP32 terhubung',
+    `last_seen` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Waktu terakhir ESP32 terhubung (hanya diperbarui oleh endpoint ESP32)',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
