@@ -1,0 +1,11 @@
+# Batasi akses web ke folder unit test pada lingkungan produksi.
+# Hanya mengizinkan akses dari localhost (127.0.0.1 / ::1) untuk pengujian lokal.
+<IfModule mod_authz_core.c>
+    Require local
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order Deny,Allow
+    Deny from all
+    Allow from 127.0.0.1 ::1
+</IfModule>
+
