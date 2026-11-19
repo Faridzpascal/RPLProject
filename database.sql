@@ -5,6 +5,12 @@
 -- ===================================================================
 
 
+-- 1. Buat Database jika belum ada dan pilih database
+CREATE DATABASE IF NOT EXISTS `smart_plant_db`
+    CHARACTER SET utf8mb4
+    COLLATE utf8mb4_unicode_ci;
+USE `smart_plant_db`;
+
 -- 2. Hapus Tabel Lama jika ada (Urutan foreign key aman)
 SET FOREIGN_KEY_CHECKS = 0;
 DROP TABLE IF EXISTS `sensor_logs`;
