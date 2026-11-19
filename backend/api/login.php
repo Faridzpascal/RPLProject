@@ -6,6 +6,7 @@
  */
 
 require_once __DIR__ . '/../helpers/auth_check.php';
+require_once __DIR__ . '/../helpers/rate_limiter.php';
 require_once __DIR__ . '/../config/database.php';
 
 // Atur header CORS & Session Cookie
@@ -39,19 +40,33 @@ if (empty($username) || empty($password)) {
     exit();
 }
 
-// 2. Hubungkan ke Database
+// 2. Periksa Rate Limit (Anti-Brute-Force)
+$rateLimitKey = getClientIpAddress() . '|' . strtolower($username);
+$rateLimit = checkLoginRateLimit($rateLimitKey);
+if (!$rateLimit['allowed']) {
+    header("Retry-After: {$rateLimit['retry_after']}");
+    http_response_code(429);
+    echo json_encode([
+        "status"  => "error",
+        "message" => "Terlalu banyak percobaan login gagal. Silakan coba lagi dalam {$rateLimit['retry_after']} detik."
+    ], JSON_UNESCAPED_UNICODE);
+    exit();
+}
+
+// 3. Hubungkan ke Database
 $database = new Database();
 $db = $database->getConnection();
 
 try {
-    // 3. Cari pengguna berdasarkan username
+    // 4. Cari pengguna berdasarkan username
     $stmt = $db->prepare("SELECT id, username, password FROM users WHERE username = :username LIMIT 1");
     $stmt->bindParam(':username', $username, PDO::PARAM_STR);
     $stmt->execute();
     $user = $stmt->fetch();
 
-    // 4. Verifikasi kredensial menggunakan password_verify
+    // 5. Verifikasi kredensial menggunakan password_verify
     if (!$user || !password_verify($password, $user['password'])) {
+        recordFailedLoginAttempt($rateLimitKey);
         http_response_code(401);
         echo json_encode([
             "status"  => "error",
@@ -60,7 +75,10 @@ try {
         exit();
     }
 
-    // 5. Inisialisasi Sesi Pengguna
+    // Bersihkan riwayat gagal login setelah autentikasi berhasil
+    clearLoginRateLimit($rateLimitKey);
+
+    // 6. Inisialisasi Sesi Pengguna
     startAppSession();
     session_regenerate_id(true); // Cegah session fixation
 

@@ -7,6 +7,7 @@
 
 require_once __DIR__ . '/TestCase.php';
 require_once __DIR__ . '/../backend/helpers/auth_check.php';
+require_once __DIR__ . '/../backend/helpers/rate_limiter.php';
 
 class AuthenticationTest extends TestCase {
 
@@ -80,6 +81,30 @@ class AuthenticationTest extends TestCase {
             } else {
                 putenv("ALLOWED_ORIGINS={$previous}");
             }
+        }
+    }
+
+    public function testLoginRateLimiterBlocksAfterMaxAttemptsAndClears(): void {
+        $tmpDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'sp_rl_test_' . uniqid();
+        $key = '127.0.0.1|admin';
+
+        try {
+            for ($i = 0; $i < 5; $i++) {
+                $status = checkLoginRateLimit($key, 5, 300, $tmpDir);
+                $this->assertTrue($status['allowed'], "Percobaan ke-" . ($i + 1) . " harus masih diizinkan");
+                recordFailedLoginAttempt($key, 300, $tmpDir);
+            }
+
+            $blocked = checkLoginRateLimit($key, 5, 300, $tmpDir);
+            $this->assertFalse($blocked['allowed'], "Percobaan ke-6 setelah 5 kali gagal harus diblokir");
+            $this->assertTrue($blocked['retry_after'] > 0, "retry_after harus bernilai positif");
+
+            clearLoginRateLimit($key, $tmpDir);
+            $reset = checkLoginRateLimit($key, 5, 300, $tmpDir);
+            $this->assertTrue($reset['allowed'], "Setelah clearLoginRateLimit(), login harus diizinkan kembali");
+        } finally {
+            clearLoginRateLimit($key, $tmpDir);
+            @rmdir($tmpDir);
         }
     }
 }
