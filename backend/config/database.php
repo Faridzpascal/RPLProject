@@ -32,11 +32,12 @@ class Database {
             $this->conn = new PDO($dsn, $this->username, $this->password, $options);
             $this->conn->exec("SET time_zone = '+07:00'");
         } catch (PDOException $e) {
+            error_log('[Database Connection Error] ' . $e->getMessage());
             http_response_code(500);
             header("Content-Type: application/json; charset=UTF-8");
             echo json_encode([
                 "status" => "error",
-                "message" => "Gagal terhubung ke database: " . $e->getMessage()
+                "message" => "Layanan database sedang tidak tersedia. Silakan coba lagi nanti."
             ], JSON_UNESCAPED_UNICODE);
             exit();
         }

@@ -122,9 +122,10 @@ try {
     ], JSON_UNESCAPED_UNICODE);
 
 } catch (PDOException $e) {
+    error_log('[API update_sensor.php Error] ' . $e->getMessage());
     http_response_code(500);
     echo json_encode([
         "status" => "error",
-        "message" => "Database error: " . $e->getMessage()
+        "message" => "Terjadi kesalahan pada server. Silakan coba lagi nanti."
     ], JSON_UNESCAPED_UNICODE);
 }
