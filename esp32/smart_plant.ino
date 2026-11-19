@@ -70,8 +70,9 @@ String pumpStatus    = "OFF";  // Nilai default: 'ON' atau 'OFF'
 float currentMoisture = 0.0;
 
 // Interval waktu non-blocking menggunakan millis()
+// Kirim data log sensor tiap 30 detik agar tabel database tidak membengkak terlalu cepat
 unsigned long lastSensorSendTime = 0;
-const unsigned long INTERVAL_SEND_SENSOR = 5000; // Kirim data sensor tiap 5 detik
+const unsigned long INTERVAL_SEND_SENSOR = 30000; // Kirim data sensor tiap 30 detik
 
 unsigned long lastStatusPollTime = 0;
 const unsigned long INTERVAL_POLL_STATUS = 3000; // Cek perintah dari web tiap 3 detik

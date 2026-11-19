@@ -116,6 +116,15 @@ try {
     $stmt_update->bindParam(':id', $device_id, PDO::PARAM_INT);
     $stmt_update->execute();
 
+    // 5. Retensi Data Berkala (~5% request): hapus log sensor lebih lama dari N hari (default 30 hari)
+    $retentionDays = max(1, (int)(getenv('SENSOR_LOG_RETENTION_DAYS') ?: 30));
+    if (random_int(1, 100) <= 5) {
+        $cleanup_sql = "DELETE FROM sensor_logs WHERE created_at < DATE_SUB(NOW(), INTERVAL :days DAY) LIMIT 1000";
+        $stmt_cleanup = $db->prepare($cleanup_sql);
+        $stmt_cleanup->bindValue(':days', $retentionDays, PDO::PARAM_INT);
+        $stmt_cleanup->execute();
+    }
+
     http_response_code(200);
     echo json_encode([
         "status" => "success",

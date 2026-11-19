@@ -39,6 +39,7 @@ CREATE TABLE `sensor_logs` (
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Waktu pembacaan log disimpan',
     INDEX `idx_device_id` (`device_id`),
     INDEX `idx_created_at` (`created_at`),
+    INDEX `idx_device_created` (`device_id`, `created_at`),
     CONSTRAINT `fk_device_sensor_logs`
         FOREIGN KEY (`device_id`) REFERENCES `devices` (`id`)
         ON DELETE CASCADE
