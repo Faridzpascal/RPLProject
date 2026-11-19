@@ -56,4 +56,30 @@ class AuthenticationTest extends TestCase {
         $this->assertFalse(isLoggedIn(), "Setelah sesi dikosongkan, pengguna tidak boleh lagi terautentikasi");
         $this->assertEquals(null, getAuthUser(), "Data user harus null setelah logout");
     }
+
+    public function testCorsWhitelistRejectsUntrustedAndNullOrigins(): void {
+        $this->assertTrue(isOriginAllowed('http://localhost:8000'), "Origin localhost:8000 harus diizinkan secara default");
+        $this->assertTrue(isOriginAllowed('http://127.0.0.1:8000/'), "Origin dengan trailing slash harus dinormalisasi dan diizinkan");
+        $this->assertFalse(isOriginAllowed('https://evil.example.com'), "Origin eksternal tidak terdaftar harus ditolak");
+        $this->assertFalse(isOriginAllowed('null'), "Origin 'null' harus ditolak");
+        $this->assertFalse(isOriginAllowed(''), "Origin kosong harus ditolak");
+    }
+
+    public function testCorsWhitelistRespectsAllowedOriginsEnv(): void {
+        $previous = getenv('ALLOWED_ORIGINS');
+        putenv('ALLOWED_ORIGINS=https://smartplant.example.com, https://app.example.com/');
+
+        try {
+            $this->assertTrue(isOriginAllowed('https://smartplant.example.com'), "Origin dari ALLOWED_ORIGINS harus diizinkan");
+            $this->assertTrue(isOriginAllowed('https://app.example.com'), "Origin kedua dari ALLOWED_ORIGINS harus diizinkan");
+            $this->assertFalse(isOriginAllowed('http://localhost:8000'), "Origin di luar ALLOWED_ORIGINS harus ditolak saat env diset");
+            $this->assertFalse(isOriginAllowed('https://evil.example.com'), "Origin penyerang harus tetap ditolak");
+        } finally {
+            if ($previous === false) {
+                putenv('ALLOWED_ORIGINS');
+            } else {
+                putenv("ALLOWED_ORIGINS={$previous}");
+            }
+        }
+    }
 }

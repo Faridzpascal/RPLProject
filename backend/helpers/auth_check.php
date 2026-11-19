@@ -9,19 +9,70 @@
 date_default_timezone_set('Asia/Jakarta');
 
 /**
- * Mengirimkan header CORS yang mendukung Session Cookie / Credentials
+ * Mengembalikan daftar origin yang diizinkan untuk CORS.
+ * Dapat dikonfigurasi melalui environment variable ALLOWED_ORIGINS (dipisah koma).
+ *
+ * @return array<int, string>
+ */
+function getAllowedCorsOrigins(): array {
+    $envOrigins = getenv('ALLOWED_ORIGINS');
+    if (is_string($envOrigins) && trim($envOrigins) !== '') {
+        $origins = array_filter(array_map(
+            static fn(string $item): string => rtrim(trim($item), '/'),
+            explode(',', $envOrigins)
+        ));
+        return array_values(array_unique($origins));
+    }
+
+    $allowed = [
+        'http://localhost',
+        'https://localhost',
+        'http://127.0.0.1',
+        'https://127.0.0.1',
+        'http://localhost:8000',
+        'http://127.0.0.1:8000',
+        'http://localhost:8080',
+        'http://127.0.0.1:8080',
+    ];
+
+    $host = $_SERVER['HTTP_HOST'] ?? '';
+    if ($host !== '') {
+        $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            || (isset($_SERVER['SERVER_PORT']) && (int)$_SERVER['SERVER_PORT'] === 443);
+        $scheme = $isHttps ? 'https' : 'http';
+        $allowed[] = "{$scheme}://{$host}";
+    }
+
+    return array_values(array_unique($allowed));
+}
+
+/**
+ * Memeriksa apakah Origin termasuk dalam whitelist CORS yang diizinkan.
+ */
+function isOriginAllowed(string $origin): bool {
+    $normalized = rtrim(trim($origin), '/');
+    if ($normalized === '' || $normalized === 'null') {
+        return false;
+    }
+
+    return in_array($normalized, getAllowedCorsOrigins(), true);
+}
+
+/**
+ * Mengirimkan header CORS yang aman berdasarkan whitelist origin
  */
 function sendCorsHeaders(): void {
-    $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-    if (!empty($origin)) {
-        header("Access-Control-Allow-Origin: {$origin}");
-        header("Access-Control-Allow-Credentials: true");
-    } else {
-        header("Access-Control-Allow-Origin: *");
-    }
     header("Content-Type: application/json; charset=UTF-8");
-    header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
-    header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
+    header("Vary: Origin");
+
+    $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+    if ($origin !== '' && isOriginAllowed($origin)) {
+        $safeOrigin = rtrim(trim($origin), '/');
+        header("Access-Control-Allow-Origin: {$safeOrigin}");
+        header("Access-Control-Allow-Credentials: true");
+        header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+        header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
+    }
 }
 
 /**
@@ -30,6 +81,15 @@ function sendCorsHeaders(): void {
 function handleCorsPreflight(): void {
     if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
         sendCorsHeaders();
+        $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+        if ($origin !== '' && !isOriginAllowed($origin)) {
+            http_response_code(403);
+            echo json_encode([
+                "status"  => "error",
+                "message" => "Origin tidak diizinkan oleh kebijakan CORS."
+            ], JSON_UNESCAPED_UNICODE);
+            exit();
+        }
         http_response_code(200);
         exit();
     }
