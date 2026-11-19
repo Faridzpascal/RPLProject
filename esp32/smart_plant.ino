@@ -11,22 +11,21 @@
 */
 
 #include <WiFi.h>
+#include <WiFiClient.h>
+#include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 
 // ============================================================================
 // 1. PENGATURAN KONEKSI WI-FI & SERVER BACKEND
 // ============================================================================
-// Ganti dengan SSID dan Password WiFi / Hotspot Anda
-const char* WIFI_SSID     = "NAMA_WIFI_ANDA";
-const char* WIFI_PASSWORD = "PASSWORD_WIFI_ANDA";
+#if defined(__has_include) && __has_include("secrets.h")
+  #include "secrets.h"
+#else
+  #include "secrets.example.h"
+#endif
 
-// Masukkan IP Komputer / Server lokal yang menjalankan XAMPP/Laragon
-// Contoh: "http://192.168.1.10/smart-plant-rpl/backend/api"
-// (Gunakan perintah 'ipconfig' di Command Prompt Windows untuk melihat IP laptop)
-const char* SERVER_BASE_URL = "http://192.168.1.10/smart-plant-rpl/backend/api";
-
-// API Key perangkat (harus sama dengan DEVICE_API_KEY di server backend)
-const char* DEVICE_API_KEY  = "smartplant-dev-device-key-change-me";
+// Timeout HTTP request (ms) agar loop ESP32 tidak blocking saat server lambat/down
+const uint16_t HTTP_TIMEOUT_MS = 5000;
 
 // URL Endpoint API
 String urlUpdateSensor = String(SERVER_BASE_URL) + "/update_sensor.php";
@@ -218,13 +217,42 @@ void controlPump(bool turnOn) {
 }
 
 // ============================================================================
-// FUNGSI MENGIRIM DATA SENSOR KE BACKEND (HTTP POST)
+// HELPER INISIALISASI HTTP / HTTPS CLIENT DENGAN TIMEOUT
+// ============================================================================
+bool beginHttpRequest(
+    HTTPClient& http,
+    WiFiClient& plainClient,
+    WiFiClientSecure& secureClient,
+    const String& url
+) {
+    http.setConnectTimeout(HTTP_TIMEOUT_MS);
+    http.setTimeout(HTTP_TIMEOUT_MS);
+
+    if (url.startsWith("https://")) {
+        if (ALLOW_INSECURE_TLS || strlen(ROOT_CA_CERT) == 0) {
+            secureClient.setInsecure();
+        } else {
+            secureClient.setCACert(ROOT_CA_CERT);
+        }
+        return http.begin(secureClient, url);
+    }
+
+    return http.begin(plainClient, url);
+}
+
+// ============================================================================
+// FUNGSI MENGIRIM DATA SENSOR KE BACKEND (HTTP/HTTPS POST)
 // ============================================================================
 void sendSensorData(float moisture) {
     if (WiFi.status() != WL_CONNECTED) return;
 
+    WiFiClient plainClient;
+    WiFiClientSecure secureClient;
     HTTPClient http;
-    http.begin(urlUpdateSensor);
+    if (!beginHttpRequest(http, plainClient, secureClient, urlUpdateSensor)) {
+        Serial.println("[HTTP ERROR] Gagal menginisialisasi koneksi ke urlUpdateSensor.");
+        return;
+    }
     http.addHeader("Content-Type", "application/json");
     http.addHeader("X-API-Key", DEVICE_API_KEY);
 
@@ -259,15 +287,20 @@ void sendSensorData(float moisture) {
 }
 
 // ============================================================================
-// FUNGSI CEK STATUS DAN MODE DARI SERVER (HTTP GET)
+// FUNGSI CEK STATUS DAN MODE DARI SERVER (HTTP/HTTPS GET)
 // ============================================================================
 void checkServerStatus() {
     if (WiFi.status() != WL_CONNECTED) return;
 
+    WiFiClient plainClient;
+    WiFiClientSecure secureClient;
     HTTPClient http;
     String requestUrl = urlGetStatus + "?mac_address=" + macAddress;
 
-    http.begin(requestUrl);
+    if (!beginHttpRequest(http, plainClient, secureClient, requestUrl)) {
+        Serial.println("[HTTP ERROR] Gagal menginisialisasi koneksi ke urlGetStatus.");
+        return;
+    }
     http.addHeader("X-API-Key", DEVICE_API_KEY);
     int httpResponseCode = http.GET();
 

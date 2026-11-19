@@ -2,6 +2,7 @@
 .env
 .env.local
 .env.*.local
+esp32/secrets.h
 
 # OS & Editor files
 .DS_Store
