@@ -1,12 +1,13 @@
 /**
  * Smart Plant Dashboard - Vanilla JavaScript Application
- * Menggunakan Fetch API untuk auto-refresh data setiap 5 detik
- * dan menangani interaksi kontrol mode & pompa secara real-time.
+ * Menggunakan Fetch API untuk auto-refresh data setiap 5 detik,
+ * Chart.js untuk grafik tren kelembapan, SVG radial gauge, dan tema Dark/Light.
  */
 
 // Konfigurasi Endpoint API
 const API_BASE = '../backend/api';
 const REFRESH_INTERVAL_SECONDS = 5;
+const GAUGE_CIRCUMFERENCE = 2 * Math.PI * 65; // r = 65 -> ~408.4
 
 // Status Lokal Aplikasi
 let appState = {
@@ -17,8 +18,13 @@ let appState = {
     isUpdating: false,
     countdown: REFRESH_INTERVAL_SECONDS,
     isDemoMode: false,
-    hasRenderedOnce: false
+    hasRenderedOnce: false,
+    lastLogs: []
 };
+
+// Chart.js & Bootstrap Toast Instances
+let moistureChartInstance = null;
+let toastBootstrap = null;
 
 // Data Simulasi Fallback (Memastikan UI selalu tampil prima saat offline / belum konek DB)
 const FALLBACK_DEMO_DATA = {
@@ -57,6 +63,10 @@ const FALLBACK_DEMO_DATA = {
 
 // Referensi Elemen DOM
 const dom = {
+    // Theme
+    btnThemeToggle: document.getElementById('btnThemeToggle'),
+    themeIcon: document.getElementById('themeIcon'),
+
     // Header & Badges
     deviceName: document.getElementById('deviceName'),
     onlineStatusBadge: document.getElementById('onlineStatusBadge'),
@@ -72,8 +82,9 @@ const dom = {
     userBadge: document.getElementById('userBadge'),
     navUsername: document.getElementById('navUsername'),
 
-    // Kartu Status
+    // Kartu Status & Gauge
     valMoisture: document.getElementById('valMoisture'),
+    gaugeCircle: document.getElementById('gaugeCircle'),
     progressMoisture: document.getElementById('progressMoisture'),
     moistureStatusLabel: document.getElementById('moistureStatusLabel'),
     moistureUpdateTime: document.getElementById('moistureUpdateTime'),
@@ -88,6 +99,9 @@ const dom = {
 
     valLastSync: document.getElementById('valLastSync'),
     valLastSyncDiff: document.getElementById('valLastSyncDiff'),
+
+    // Chart
+    moistureChartCanvas: document.getElementById('moistureChart'),
 
     // Kontrol
     switchOperatingMode: document.getElementById('switchOperatingMode'),
@@ -115,13 +129,13 @@ const dom = {
     toastIcon: document.getElementById('toastIcon')
 };
 
-// Bootstrap Toast Instance
-let toastBootstrap = null;
-
 // ============================================================================
 // INISIALISASI APLIKASI
 // ============================================================================
 document.addEventListener('DOMContentLoaded', () => {
+    // Inisialisasi Tema Gelap / Terang
+    initThemeToggle();
+
     // 1. Cek apakah halaman saat ini adalah Halaman Login (login.html)
     if (document.getElementById('loginForm')) {
         initLoginPage();
@@ -129,20 +143,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // 2. Jika di Halaman Dashboard (index.html):
-    // Cek Session Guard terlebih dahulu
     checkAuthSession();
 
-    // Inisialisasi Toast Bootstrap jika elemen ada
     if (dom.liveToast && typeof bootstrap !== 'undefined' && bootstrap.Toast) {
         toastBootstrap = new bootstrap.Toast(dom.liveToast, { delay: 3500 });
     }
 
-    // Pasang Event Listener Tombol Logout
     if (dom.btnLogout) {
         dom.btnLogout.addEventListener('click', handleLogout);
     }
 
-    // Pasang Event Listener Refresh & Kontrol
     if (dom.btnManualRefresh) {
         dom.btnManualRefresh.addEventListener('click', () => {
             appState.countdown = REFRESH_INTERVAL_SECONDS;
@@ -173,6 +183,33 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ============================================================================
+// PENGATURAN TEMA GELAP / TERANG
+// ============================================================================
+function initThemeToggle() {
+    const savedTheme = localStorage.getItem('smartplant_theme') || 'light';
+    applyTheme(savedTheme);
+
+    if (dom.btnThemeToggle) {
+        dom.btnThemeToggle.addEventListener('click', () => {
+            const current = document.documentElement.getAttribute('data-theme') || 'light';
+            const next = current === 'dark' ? 'light' : 'dark';
+            applyTheme(next);
+            localStorage.setItem('smartplant_theme', next);
+            if (appState.lastLogs.length > 0) {
+                renderMoistureChart(appState.lastLogs);
+            }
+        });
+    }
+}
+
+function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    if (dom.themeIcon) {
+        dom.themeIcon.className = theme === 'dark' ? 'bi bi-sun-fill text-warning' : 'bi bi-moon-stars';
+    }
+}
+
+// ============================================================================
 // TIMER COUNTDOWN & SINKRONISASI PERIODIK (5 DETIK)
 // ============================================================================
 function handleTimerTick() {
@@ -195,9 +232,10 @@ function handleTimerTick() {
 // ============================================================================
 async function fetchDashboardData(isManual = false) {
     if (appState.isUpdating && !isManual) return;
+    appState.isUpdating = true;
 
     try {
-        if (isManual) {
+        if (isManual && dom.btnManualRefresh) {
             dom.btnManualRefresh.disabled = true;
             dom.btnManualRefresh.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> Menyinkronkan...`;
         }
@@ -240,7 +278,8 @@ async function fetchDashboardData(isManual = false) {
             showToast(error.message || 'Gagal terhubung ke backend atau database.', 'danger');
         }
     } finally {
-        if (isManual) {
+        appState.isUpdating = false;
+        if (isManual && dom.btnManualRefresh) {
             dom.btnManualRefresh.disabled = false;
             dom.btnManualRefresh.innerHTML = `<i class="bi bi-arrow-clockwise me-1"></i> Segarkan Sekarang`;
         }
@@ -258,74 +297,83 @@ function updateDashboardUI(data) {
     appState.operatingMode = device.operating_mode;
     appState.pumpStatus = device.pump_status;
     appState.currentMoisture = current_moisture;
+    appState.lastLogs = logs || [];
 
     // 1. Informasi Header Perangkat & Status Online ESP32
     dom.deviceName.textContent = device.name || 'ESP32 Smart Plant';
     dom.valMacAddress.textContent = device.mac_address || 'Tidak Diketahui';
 
     if (device.is_online) {
-        dom.pulseDot.className = 'pulse-dot online me-1';
-        dom.onlineStatusBadge.className = 'badge bg-success px-3 py-2 rounded-pill shadow-sm';
+        dom.pulseDot.className = 'pulse-dot online';
+        dom.onlineStatusBadge.className = 'badge bg-success-subtle text-success border border-success-subtle px-3 py-2 rounded-pill d-inline-flex align-items-center gap-2';
         dom.onlineStatusText.textContent = 'ESP32 Terhubung';
     } else {
-        dom.pulseDot.className = 'pulse-dot offline me-1';
-        dom.onlineStatusBadge.className = 'badge bg-danger px-3 py-2 rounded-pill shadow-sm';
+        dom.pulseDot.className = 'pulse-dot offline';
+        dom.onlineStatusBadge.className = 'badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-2 rounded-pill d-inline-flex align-items-center gap-2';
         dom.onlineStatusText.textContent = 'ESP32 Terputus';
     }
 
-    // 2. Kartu Kelembapan Tanah
-    const moistureVal = parseFloat(current_moisture).toFixed(1);
+    // 2. Kartu & Gauge Kelembapan Tanah
+    const moistureNum = Math.min(Math.max(parseFloat(current_moisture) || 0, 0), 100);
+    const moistureVal = moistureNum.toFixed(1);
     dom.valMoisture.textContent = `${moistureVal}%`;
-    dom.progressMoisture.style.width = `${Math.min(Math.max(moistureVal, 0), 100)}%`;
+    dom.progressMoisture.style.width = `${moistureNum}%`;
 
-    // Klasifikasi Kondisi Kelembapan
     let moistLabel = '';
     let moistColorClass = '';
-    let moistBadgeClass = '';
+    let moistTextClass = '';
+    let gaugeStrokeColor = '#10b981';
 
-    if (moistureVal < 35) {
+    if (moistureNum < 35) {
         moistLabel = 'Kering (Perlu Disiram)';
         moistColorClass = 'bg-danger';
-        moistBadgeClass = 'text-danger';
-    } else if (moistureVal <= 70) {
+        moistTextClass = 'text-danger';
+        gaugeStrokeColor = '#f43f5e';
+    } else if (moistureNum <= 70) {
         moistLabel = 'Lembab (Kondisi Ideal)';
         moistColorClass = 'bg-success';
-        moistBadgeClass = 'text-success';
+        moistTextClass = 'text-success';
+        gaugeStrokeColor = '#10b981';
     } else {
         moistLabel = 'Sangat Basah / Jenuh';
         moistColorClass = 'bg-info';
-        moistBadgeClass = 'text-info';
+        moistTextClass = 'text-info';
+        gaugeStrokeColor = '#0ea5e9';
     }
 
-    dom.progressMoisture.className = `progress-bar ${moistColorClass}`;
-    dom.moistureStatusLabel.className = `fw-semibold ${moistBadgeClass}`;
-    dom.moistureStatusLabel.innerHTML = `<i class="bi bi-circle-fill me-1" style="font-size: 0.6rem;"></i> ${moistLabel}`;
-    dom.moistureUpdateTime.textContent = formatDateTime(last_moisture_time);
+    if (dom.gaugeCircle) {
+        const offset = GAUGE_CIRCUMFERENCE - (moistureNum / 100) * GAUGE_CIRCUMFERENCE;
+        dom.gaugeCircle.style.strokeDashoffset = offset;
+        dom.gaugeCircle.style.stroke = gaugeStrokeColor;
+    }
+
+    dom.progressMoisture.className = `progress-bar rounded-pill ${moistColorClass}`;
+    dom.moistureStatusLabel.className = `fw-semibold ${moistTextClass}`;
+    dom.moistureStatusLabel.innerHTML = `<i class="bi bi-circle-fill me-1" style="font-size: 0.55rem;"></i> ${moistLabel}`;
+    dom.moistureUpdateTime.textContent = formatTimeOnly(last_moisture_time);
 
     // 3. Kartu Status Pompa
     if (device.pump_status === 'ON') {
-        dom.valPumpBadge.className = 'badge bg-success fs-6 px-3 py-2 rounded-pill pump-active-badge';
+        dom.valPumpBadge.className = 'badge bg-success-subtle text-success border border-success-subtle px-3 py-2 rounded-pill pump-active-badge';
         dom.valPumpBadge.innerHTML = `<i class="bi bi-droplet-fill me-1"></i> MENYALA (ON)`;
-        dom.pumpIconBox.className = 'card-icon-box icon-pump-on shadow-sm';
-        dom.pumpIcon.className = 'bi bi-water text-success';
+        dom.pumpIconBox.className = 'icon-tile tile-emerald';
         dom.pumpDescription.textContent = 'Pompa air sedang AKTIF mengalirkan air ke tanaman.';
     } else {
-        dom.valPumpBadge.className = 'badge bg-secondary fs-6 px-3 py-2 rounded-pill';
+        dom.valPumpBadge.className = 'badge bg-secondary-subtle text-secondary border border-secondary-subtle px-3 py-2 rounded-pill';
         dom.valPumpBadge.innerHTML = `<i class="bi bi-power me-1"></i> MATI (OFF)`;
-        dom.pumpIconBox.className = 'card-icon-box icon-pump-off shadow-sm';
-        dom.pumpIcon.className = 'bi bi-water text-danger';
+        dom.pumpIconBox.className = 'icon-tile tile-rose';
         dom.pumpDescription.textContent = 'Relay pompa air saat ini sedang mati (standby).';
     }
 
     // 4. Kartu Mode Operasi
     if (device.operating_mode === 'AUTO') {
-        dom.valModeBadge.className = 'badge bg-primary fs-6 px-3 py-2 rounded-pill';
-        dom.valModeBadge.innerHTML = `<i class="bi bi-robot me-1"></i> OTOMATIS (AUTO)`;
-        dom.modeDescription.textContent = 'Sistem menyiram otomatis jika kelembapan < 35%.';
+        dom.valModeBadge.className = 'badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 rounded-pill';
+        dom.valModeBadge.innerHTML = `<i class="bi bi-robot me-1"></i> OTOMATIS`;
+        dom.modeDescription.textContent = 'Menyiram otomatis jika kelembapan < 35%.';
     } else {
-        dom.valModeBadge.className = 'badge bg-warning text-dark fs-6 px-3 py-2 rounded-pill';
+        dom.valModeBadge.className = 'badge bg-warning-subtle text-warning border border-warning-subtle px-3 py-2 rounded-pill';
         dom.valModeBadge.innerHTML = `<i class="bi bi-hand-index-thumb me-1"></i> MANUAL`;
-        dom.modeDescription.textContent = 'Penyiraman dikendalikan manual oleh pengguna via tombol.';
+        dom.modeDescription.textContent = 'Penyiraman dikendalikan manual oleh pengguna.';
     }
 
     // 5. Kartu Sinkronisasi Terakhir
@@ -350,8 +398,100 @@ function updateDashboardUI(data) {
         dom.valMaxMoisture.textContent = `${stats.max}%`;
     }
 
-    // 8. Isi Tabel 10 Riwayat Log Sensor
-    renderLogsTable(logs);
+    // 8. Render Grafik Tren & Tabel 10 Riwayat Log Sensor
+    renderMoistureChart(appState.lastLogs);
+    renderLogsTable(appState.lastLogs);
+}
+
+// ============================================================================
+// GRAFIK TREN KELEMBAPAN TANAH (CHART.JS)
+// ============================================================================
+function renderMoistureChart(logs) {
+    if (!dom.moistureChartCanvas || typeof Chart === 'undefined') return;
+
+    const ordered = [...(logs || [])].reverse();
+    const labels = ordered.map(l => formatTimeOnly(l.created_at).slice(0, 5));
+    const values = ordered.map(l => parseFloat(l.moisture_level));
+    const thresholdLine = ordered.map(() => 35);
+
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const gridColor = isDark ? 'rgba(148, 163, 184, 0.12)' : 'rgba(15, 23, 42, 0.06)';
+    const tickColor = isDark ? '#94a3b8' : '#64748b';
+
+    const ctx = dom.moistureChartCanvas.getContext('2d');
+    const gradient = ctx.createLinearGradient(0, 0, 0, 240);
+    gradient.addColorStop(0, 'rgba(16, 185, 129, 0.35)');
+    gradient.addColorStop(1, 'rgba(16, 185, 129, 0.0)');
+
+    if (moistureChartInstance) {
+        moistureChartInstance.destroy();
+    }
+
+    moistureChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: 'Kelembapan (%)',
+                    data: values,
+                    borderColor: '#10b981',
+                    backgroundColor: gradient,
+                    borderWidth: 2.5,
+                    pointBackgroundColor: values.map(v => v < 35 ? '#f43f5e' : (v > 70 ? '#0ea5e9' : '#10b981')),
+                    pointBorderColor: isDark ? '#111822' : '#ffffff',
+                    pointBorderWidth: 2,
+                    pointRadius: 4.5,
+                    pointHoverRadius: 6.5,
+                    tension: 0.35,
+                    fill: true
+                },
+                {
+                    label: 'Batas Kering (35%)',
+                    data: thresholdLine,
+                    borderColor: 'rgba(244, 63, 94, 0.65)',
+                    borderWidth: 1.5,
+                    borderDash: [5, 5],
+                    pointRadius: 0,
+                    fill: false
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 350 },
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: isDark ? '#1e293b' : '#0f172a',
+                    titleColor: '#f8fafc',
+                    bodyColor: '#e2e8f0',
+                    padding: 10,
+                    cornerRadius: 10,
+                    displayColors: true
+                }
+            },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: { color: tickColor, font: { family: 'JetBrains Mono', size: 11 } }
+                },
+                y: {
+                    min: 0,
+                    max: 100,
+                    grid: { color: gridColor },
+                    ticks: {
+                        color: tickColor,
+                        stepSize: 25,
+                        callback: val => `${val}%`,
+                        font: { family: 'JetBrains Mono', size: 11 }
+                    }
+                }
+            }
+        }
+    });
 }
 
 // ============================================================================
@@ -360,32 +500,30 @@ function updateDashboardUI(data) {
 function syncControlsUI(mode, pumpStatus) {
     const isManual = (mode === 'MANUAL');
 
-    // Update switch toggle: Checked = MANUAL, Unchecked = OTOMATIS
     dom.switchOperatingMode.checked = isManual;
-    dom.switchModeLabel.textContent = isManual ? 'Mode Manual (Aktif)' : 'Mode Otomatis (Aktif)';
-    dom.switchModeLabel.className = isManual ? 'form-check-label fw-bold ms-2 text-warning' : 'form-check-label fw-bold ms-2 text-primary';
+    dom.switchModeLabel.textContent = isManual ? 'Manual (Aktif)' : 'Otomatis (Aktif)';
+    dom.switchModeLabel.className = isManual
+        ? 'form-check-label fw-bold small text-warning'
+        : 'form-check-label fw-bold small text-success';
 
-    // Logika Tombol Pompa
     if (!isManual) {
-        // Mode AUTO: Tombol Pompa Dinonaktifkan (Disabled)
         dom.btnTogglePump.disabled = true;
-        dom.btnTogglePump.className = 'btn btn-pump-action btn-secondary w-100 opacity-50';
+        dom.btnTogglePump.className = 'btn btn-pump-modern btn-pump-locked w-100';
         dom.btnPumpText.textContent = 'Pompa Terkunci (Mode Auto)';
         dom.pumpBtnIcon.className = 'bi bi-lock-fill me-1';
         dom.autoModeNotice.classList.remove('d-none');
         dom.pumpControlHint.innerHTML = 'Pompa dikendalikan secara otomatis oleh mikrokontroler ESP32.';
     } else {
-        // Mode MANUAL: Tombol Pompa Aktif (Enabled)
         dom.btnTogglePump.disabled = false;
         dom.autoModeNotice.classList.add('d-none');
-        dom.pumpControlHint.innerHTML = 'Klik tombol di bawah untuk mengaktifkan atau mematikan pompa air.';
+        dom.pumpControlHint.innerHTML = 'Klik tombol di samping untuk menyalakan atau mematikan pompa air.';
 
         if (pumpStatus === 'ON') {
-            dom.btnTogglePump.className = 'btn btn-pump-action btn-danger w-100';
+            dom.btnTogglePump.className = 'btn btn-pump-modern btn-pump-off w-100';
             dom.btnPumpText.textContent = 'Matikan Pompa (OFF)';
             dom.pumpBtnIcon.className = 'bi bi-stop-circle me-1';
         } else {
-            dom.btnTogglePump.className = 'btn btn-pump-action btn-success w-100';
+            dom.btnTogglePump.className = 'btn btn-pump-modern btn-pump-on w-100';
             dom.btnPumpText.textContent = 'Nyalakan Pompa (ON)';
             dom.pumpBtnIcon.className = 'bi bi-play-circle me-1';
         }
@@ -398,15 +536,13 @@ function syncControlsUI(mode, pumpStatus) {
 async function handleModeChange(event) {
     const newMode = event.target.checked ? 'MANUAL' : 'AUTO';
 
-    // Jika sedang dalam Mode Demo / Backend belum terkoneksi, simulasikan perubahan di UI langsung
     if (appState.isDemoMode) {
-        appState.operatingMode = newMode;
-        renderControls(appState.operatingMode, appState.pumpStatus);
-        dom.valModeBadge.className = `badge fs-6 px-3 py-2 rounded-pill ${newMode === 'AUTO' ? 'bg-success' : 'bg-warning text-dark'}`;
-        dom.valModeBadge.textContent = newMode;
-        dom.modeDescription.textContent = (newMode === 'AUTO') 
-            ? 'Sistem bekerja otomatis sesuai sensor.' 
-            : 'Kontrol pompa sepenuhnya manual.';
+        FALLBACK_DEMO_DATA.device.operating_mode = newMode;
+        if (newMode === 'AUTO') {
+            FALLBACK_DEMO_DATA.device.pump_status = FALLBACK_DEMO_DATA.current_moisture < 35 ? 'ON' : 'OFF';
+        }
+        updateDashboardUI(FALLBACK_DEMO_DATA);
+        updateOfflineUI();
         showToast(`Mode operasi diubah ke ${newMode === 'AUTO' ? 'Otomatis' : 'Manual'} (Simulasi Mode Demo).`, 'warning');
         return;
     }
@@ -445,7 +581,6 @@ async function handleModeChange(event) {
     } catch (error) {
         console.error('Error saat update mode:', error);
         showToast(error.message, 'danger');
-        // Kembalikan switch ke kondisi semula
         dom.switchOperatingMode.checked = (appState.operatingMode === 'MANUAL');
     } finally {
         dom.switchOperatingMode.disabled = false;
@@ -463,16 +598,14 @@ async function handlePumpToggle() {
 
     const nextStatus = (appState.pumpStatus === 'ON') ? 'OFF' : 'ON';
 
-    // Jika sedang dalam Mode Demo / Backend belum terkoneksi, simulasikan toggle pompa di UI langsung
     if (appState.isDemoMode) {
-        appState.pumpStatus = nextStatus;
-        renderPumpStatus(nextStatus);
-        renderControls(appState.operatingMode, nextStatus);
+        FALLBACK_DEMO_DATA.device.pump_status = nextStatus;
+        updateDashboardUI(FALLBACK_DEMO_DATA);
+        updateOfflineUI();
         showToast(`Pompa berhasil ${nextStatus === 'ON' ? 'dinyalakan (ON)' : 'dimatikan (OFF)'} (Simulasi Mode Demo).`, 'warning');
         return;
     }
 
-    // Tampilkan loading spinner pada tombol
     dom.btnTogglePump.disabled = true;
     dom.pumpSpinner.classList.remove('d-none');
 
@@ -535,16 +668,17 @@ function renderLogsTable(logs) {
 
     let html = '';
     logs.forEach((log, index) => {
-        const moisture = parseFloat(log.moisture_level).toFixed(1);
+        const moistureNum = parseFloat(log.moisture_level);
+        const moisture = moistureNum.toFixed(1);
         let conditionText = '';
         let badgeColor = '';
         let barColor = '';
 
-        if (moisture < 35) {
+        if (moistureNum < 35) {
             conditionText = 'Kering';
             badgeColor = 'bg-danger-subtle text-danger border-danger-subtle';
             barColor = 'bg-danger';
-        } else if (moisture <= 70) {
+        } else if (moistureNum <= 70) {
             conditionText = 'Lembab';
             badgeColor = 'bg-success-subtle text-success border-success-subtle';
             barColor = 'bg-success';
@@ -556,21 +690,21 @@ function renderLogsTable(logs) {
 
         html += `
             <tr>
-                <td class="fw-bold text-muted">${index + 1}</td>
+                <td class="fw-bold font-mono text-muted">${index + 1}</td>
                 <td class="text-start">
-                    <div class="fw-semibold text-dark">${formatDateTime(log.created_at)}</div>
+                    <div class="fw-semibold">${formatDateTime(log.created_at)}</div>
                     <small class="text-muted">${getRelativeTime(log.created_at)}</small>
                 </td>
                 <td>
-                    <span class="fs-6 fw-bold text-dark">${moisture}%</span>
+                    <span class="font-mono fw-bold">${moisture}%</span>
                 </td>
                 <td>
-                    <div class="progress" style="height: 6px;">
-                        <div class="progress-bar ${barColor}" style="width: ${Math.min(moisture, 100)}%"></div>
+                    <div class="progress rounded-pill" style="height: 7px;">
+                        <div class="progress-bar rounded-pill ${barColor}" style="width: ${Math.min(Math.max(moistureNum, 0), 100)}%"></div>
                     </div>
                 </td>
                 <td>
-                    <span class="badge border px-3 py-2 ${badgeColor}">${conditionText}</span>
+                    <span class="badge border rounded-pill px-3 py-2 ${badgeColor}">${conditionText}</span>
                 </td>
             </tr>
         `;
@@ -622,17 +756,14 @@ function getRelativeTime(dateStr) {
 
 // ============================================================================
 // PENANGANAN FALLBACK DEMO / OFFLINE
-// Memastikan UI tetap dapat tampil, responsif, dan interaktif meskipun server belum menyala
 // ============================================================================
 function handleOfflineFallback(errorMessage) {
     appState.isDemoMode = true;
 
-    // Tampilkan banner peringatan koneksi
     if (dom.connectionAlert) {
         dom.connectionAlert.classList.remove('d-none');
     }
 
-    // Jika data belum pernah dirender sama sekali, render data simulasi
     if (!appState.hasRenderedOnce) {
         appState.hasRenderedOnce = true;
         updateDashboardUI(FALLBACK_DEMO_DATA);
@@ -641,13 +772,10 @@ function handleOfflineFallback(errorMessage) {
     updateOfflineUI(errorMessage);
 }
 
-// ============================================================================
-// UI KETIKA BACKEND / DATABASE TERPUTUS
-// ============================================================================
-function updateOfflineUI(errorMessage) {
-    dom.pulseDot.className = 'pulse-dot offline me-1';
-    dom.onlineStatusBadge.className = 'badge bg-warning text-dark px-3 py-2 rounded-pill shadow-sm';
-    dom.onlineStatusText.textContent = 'Server Belum Terhubung (Demo)';
+function updateOfflineUI() {
+    dom.pulseDot.className = 'pulse-dot offline';
+    dom.onlineStatusBadge.className = 'badge bg-warning-subtle text-warning border border-warning-subtle px-3 py-2 rounded-pill d-inline-flex align-items-center gap-2';
+    dom.onlineStatusText.textContent = 'Mode Demo (Offline)';
     dom.valLastSyncDiff.textContent = 'Menampilkan data simulasi visual';
 }
 
@@ -658,16 +786,13 @@ function showToast(message, type = 'success') {
     if (!toastBootstrap) return;
 
     dom.toastText.textContent = message;
-    
+
     if (type === 'success') {
-        dom.toastIcon.className = 'bi bi-check-circle-fill fs-5 text-success me-2';
-        dom.liveToast.className = 'toast align-items-center text-bg-light border-0 shadow-lg';
+        dom.toastIcon.className = 'bi bi-check-circle-fill fs-5 text-success';
     } else if (type === 'danger') {
-        dom.toastIcon.className = 'bi bi-exclamation-triangle-fill fs-5 text-danger me-2';
-        dom.liveToast.className = 'toast align-items-center text-bg-light border-0 shadow-lg';
+        dom.toastIcon.className = 'bi bi-exclamation-triangle-fill fs-5 text-danger';
     } else if (type === 'warning') {
-        dom.toastIcon.className = 'bi bi-info-circle-fill fs-5 text-warning me-2';
-        dom.liveToast.className = 'toast align-items-center text-bg-light border-0 shadow-lg';
+        dom.toastIcon.className = 'bi bi-info-circle-fill fs-5 text-warning';
     }
 
     toastBootstrap.show();
@@ -676,11 +801,6 @@ function showToast(message, type = 'success') {
 // ============================================================================
 // LOGIKA AUTENTIKASI & MANAJEMEN SESI (AUTH GUARD & SESSION)
 // ============================================================================
-
-/**
- * Memvalidasi apakah sesi login pengguna saat ini aktif di server.
- * Jika belum login (401), secara otomatis redirect ke login.html.
- */
 async function checkAuthSession() {
     try {
         const response = await fetch(`${API_BASE}/check_session.php?t=${Date.now()}`, {
@@ -711,15 +831,11 @@ async function checkAuthSession() {
             return false;
         }
     } catch (err) {
-        // Jika server backend offline sama sekali, fetchDashboardData akan menangani mode fallback demo
         console.warn('Gagal memvalidasi sesi via check_session (server offline):', err);
         return null;
     }
 }
 
-/**
- * Handler proses logout: Menghancurkan sesi di backend dan redirect ke login.html.
- */
 async function handleLogout() {
     if (dom.btnLogout) {
         dom.btnLogout.disabled = true;
@@ -738,9 +854,6 @@ async function handleLogout() {
     }
 }
 
-/**
- * Inisialisasi Event Listener & Logika untuk Halaman Login (login.html)
- */
 function initLoginPage() {
     const loginForm = document.getElementById('loginForm');
     const usernameInput = document.getElementById('username');
@@ -799,7 +912,6 @@ function initLoginPage() {
                 return;
             }
 
-            // Tampilkan status proses
             btnLogin.disabled = true;
             if (loginBtnSpinner) loginBtnSpinner.classList.remove('d-none');
             if (loginBtnIcon) loginBtnIcon.classList.add('d-none');
@@ -858,4 +970,3 @@ function initLoginPage() {
         }
     }
 }
-

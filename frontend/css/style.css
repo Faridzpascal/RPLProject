@@ -1,264 +1,545 @@
 /**
- * Smart Plant Dashboard - Custom CSS Stylesheet
- * Bootstrap 5 Enhanced Theme for University IoT Project
+ * Smart Plant Dashboard - Modern Botanical IoT Theme
+ * Supports Light & Dark Mode with Glassmorphism & Precision Telemetry
  */
 
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
 :root {
-    --primary-plant: #198754;
-    --primary-plant-dark: #0f5132;
-    --primary-plant-light: #d1e7dd;
-    --soil-accent: #795548;
-    --bg-main: #f4f7f6;
-    --card-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
-    --card-hover-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
+    --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+
+    /* Brand & Semantic Colors */
+    --emerald-50: #ecfdf5;
+    --emerald-100: #d1fae5;
+    --emerald-500: #10b981;
+    --emerald-600: #059669;
+    --emerald-700: #047857;
+
+    --sky-500: #0ea5e9;
+    --amber-500: #f59e0b;
+    --rose-500: #f43f5e;
+    --violet-500: #8b5cf6;
+
+    /* Light Theme Surfaces */
+    --bg-body: #f1f5f9;
+    --bg-gradient: radial-gradient(circle at 15% 10%, rgba(16, 185, 129, 0.08) 0%, transparent 45%),
+                   radial-gradient(circle at 85% 90%, rgba(14, 165, 233, 0.07) 0%, transparent 45%);
+    --surface-card: #ffffff;
+    --surface-subtle: #f8fafc;
+    --surface-nav: rgba(255, 255, 255, 0.85);
+    --border-color: #e2e8f0;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #64748b;
+    --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.04);
+    --shadow-card: 0 10px 30px -5px rgba(15, 23, 42, 0.06), 0 4px 10px -4px rgba(15, 23, 42, 0.03);
+    --shadow-hover: 0 20px 35px -8px rgba(15, 23, 42, 0.1);
+    --gauge-track: #e2e8f0;
+}
+
+[data-theme="dark"] {
+    --bg-body: #090e14;
+    --bg-gradient: radial-gradient(circle at 15% 10%, rgba(16, 185, 129, 0.12) 0%, transparent 45%),
+                   radial-gradient(circle at 85% 85%, rgba(14, 165, 233, 0.1) 0%, transparent 45%);
+    --surface-card: #111822;
+    --surface-subtle: #182230;
+    --surface-nav: rgba(17, 24, 34, 0.85);
+    --border-color: #1e293b;
+    --text-primary: #f1f5f9;
+    --text-secondary: #cbd5e1;
+    --text-muted: #94a3b8;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-card: 0 12px 32px -4px rgba(0, 0, 0, 0.45);
+    --shadow-hover: 0 20px 40px -8px rgba(0, 0, 0, 0.6);
+    --gauge-track: #1e293b;
+}
+
+* {
+    box-sizing: border-box;
 }
 
 body {
-    background-color: var(--bg-main);
-    font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
-    color: #2b2f33;
+    font-family: var(--font-sans);
+    background-color: var(--bg-body);
+    background-image: var(--bg-gradient);
+    background-attachment: fixed;
+    color: var(--text-primary);
     min-height: 100vh;
-}
-
-/* Header & Navbar */
-.navbar-custom {
-    background: linear-gradient(135deg, #198754 0%, #157347 100%);
-    box-shadow: 0 4px 15px rgba(25, 135, 84, 0.2);
-}
-
-.brand-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 42px;
-    height: 42px;
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 12px;
-    backdrop-filter: blur(4px);
-}
-
-/* Status Cards */
-.status-card {
-    border: none;
-    border-radius: 16px;
-    background: #ffffff;
-    box-shadow: var(--card-shadow);
-    transition: transform 0.25s ease, box-shadow 0.25s ease;
-    overflow: hidden;
-    position: relative;
-}
-
-.status-card:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--card-hover-shadow);
-}
-
-.status-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-}
-
-.card-moisture::before { background: linear-gradient(90deg, #0dcaf0, #0d6efd); }
-.card-pump::before { background: linear-gradient(90deg, #198754, #20c997); }
-.card-mode::before { background: linear-gradient(90deg, #6f42c1, #0d6efd); }
-.card-sync::before { background: linear-gradient(90deg, #ffc107, #fd7e14); }
-
-.card-icon-box {
-    width: 52px;
-    height: 52px;
-    border-radius: 14px;
+    transition: background-color 0.25s ease, color 0.25s ease;
     display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.6rem;
+    flex-direction: column;
 }
 
-.icon-moisture { background-color: #e7f5ff; color: #0d6efd; }
-.icon-pump-on { background-color: #d1e7dd; color: #0f5132; }
-.icon-pump-off { background-color: #f8d7da; color: #842029; }
-.icon-mode { background-color: #f3e8ff; color: #6f42c1; }
-.icon-sync { background-color: #fff3cd; color: #664d03; }
-
-.status-value {
-    font-size: 2.2rem;
-    font-weight: 700;
-    letter-spacing: -0.5px;
-    line-height: 1.1;
-}
-
-/* Pulse animation for Live Indicator */
-.pulse-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    display: inline-block;
-    position: relative;
-}
-
-.pulse-dot.online {
-    background-color: #198754;
-    box-shadow: 0 0 0 0 rgba(25, 135, 84, 0.7);
-    animation: pulse 1.8s infinite;
-}
-
-.pulse-dot.offline {
-    background-color: #dc3545;
-}
-
-@keyframes pulse {
-    0% {
-        box-shadow: 0 0 0 0 rgba(25, 135, 84, 0.7);
-    }
-    70% {
-        box-shadow: 0 0 0 8px rgba(25, 135, 84, 0);
-    }
-    100% {
-        box-shadow: 0 0 0 0 rgba(25, 135, 84, 0);
-    }
-}
-
-/* Water Droplet Wave Effect for Pump */
-.pump-active-badge {
-    animation: bounce 1.5s infinite;
-}
-
-@keyframes bounce {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-3px); }
-}
-
-/* Controls Box */
-.controls-card {
-    border: none;
-    border-radius: 16px;
-    background: #ffffff;
-    box-shadow: var(--card-shadow);
-}
-
-.switch-custom .form-check-input {
-    width: 3.2rem;
-    height: 1.7rem;
-    cursor: pointer;
-}
-
-.switch-custom .form-check-input:checked {
-    background-color: #6f42c1;
-    border-color: #6f42c1;
-}
-
-.btn-pump-action {
-    font-size: 1.05rem;
-    font-weight: 600;
-    padding: 0.75rem 1.75rem;
-    border-radius: 12px;
-    transition: all 0.2s ease;
-}
-
-.btn-pump-action:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
-}
-
-/* Data Table Card */
-.table-card {
-    border: none;
-    border-radius: 16px;
-    background: #ffffff;
-    box-shadow: var(--card-shadow);
-    overflow: hidden;
-}
-
-.table-custom thead th {
-    background-color: #f8fafc;
-    color: #495057;
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    font-weight: 600;
-    border-bottom: 2px solid #edf2f7;
-    padding: 1rem;
-}
-
-.table-custom tbody td {
-    padding: 0.95rem 1rem;
-    vertical-align: middle;
-    border-bottom: 1px solid #edf2f7;
-    font-size: 0.92rem;
-}
-
-.table-custom tbody tr:hover {
-    background-color: #fcfcfc;
-}
-
-/* Toast Container */
-.toast-container {
-    z-index: 1080;
-}
-
-/* Footer */
-footer {
-    color: #6c757d;
-    font-size: 0.88rem;
+.font-mono {
+    font-family: var(--font-mono) !important;
 }
 
 /* ==========================================================================
-   Halaman Login (Auth Screen) Styling
+   Top Glassmorphic Navbar
+   ========================================================================== */
+.navbar-modern {
+    background: var(--surface-nav);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    z-index: 1030;
+    transition: background-color 0.25s ease, border-color 0.25s ease;
+}
+
+.brand-mark {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--emerald-500), var(--emerald-700));
+    color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+    box-shadow: 0 6px 16px rgba(16, 185, 129, 0.28);
+    flex-shrink: 0;
+}
+
+.brand-title {
+    font-weight: 800;
+    font-size: 1.12rem;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+    line-height: 1.2;
+}
+
+.brand-subtitle {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.nav-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.4rem 0.85rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    background: var(--surface-subtle);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    transition: all 0.2s ease;
+    text-decoration: none;
+}
+
+.nav-pill:hover {
+    border-color: var(--emerald-500);
+    color: var(--text-primary);
+}
+
+.btn-icon-circle {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface-subtle);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.btn-icon-circle:hover {
+    border-color: var(--emerald-500);
+    color: var(--emerald-500);
+    transform: translateY(-1px);
+}
+
+/* ==========================================================================
+   Live Pulse Indicator
+   ========================================================================== */
+.pulse-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+.pulse-dot.online {
+    background-color: var(--emerald-500);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+    animation: pulse-ring 1.8s infinite;
+}
+
+.pulse-dot.offline {
+    background-color: var(--rose-500);
+}
+
+@keyframes pulse-ring {
+    0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+    70% { box-shadow: 0 0 0 7px rgba(16, 185, 129, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+/* ==========================================================================
+   Bento Cards & Surfaces
+   ========================================================================== */
+.bento-card {
+    background: var(--surface-card);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    box-shadow: var(--shadow-card);
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease, background-color 0.25s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.bento-card:hover {
+    box-shadow: var(--shadow-hover);
+}
+
+.card-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+}
+
+.icon-tile {
+    width: 46px;
+    height: 46px;
+    border-radius: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+    flex-shrink: 0;
+}
+
+.tile-emerald { background: rgba(16, 185, 129, 0.14); color: var(--emerald-500); }
+.tile-rose    { background: rgba(244, 63, 94, 0.14); color: var(--rose-500); }
+.tile-violet  { background: rgba(139, 92, 246, 0.14); color: var(--violet-500); }
+.tile-amber   { background: rgba(245, 158, 11, 0.14); color: var(--amber-500); }
+.tile-sky     { background: rgba(14, 165, 233, 0.14); color: var(--sky-500); }
+
+/* ==========================================================================
+   SVG Radial Moisture Gauge
+   ========================================================================== */
+.gauge-wrapper {
+    position: relative;
+    width: 170px;
+    height: 170px;
+    margin: 0 auto;
+}
+
+.gauge-svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+
+.gauge-bg {
+    fill: none;
+    stroke: var(--gauge-track);
+    stroke-width: 12;
+}
+
+.gauge-progress {
+    fill: none;
+    stroke: var(--emerald-500);
+    stroke-width: 12;
+    stroke-linecap: round;
+    stroke-dasharray: 408.4; /* 2 * PI * 65 */
+    stroke-dashoffset: 408.4;
+    transition: stroke-dashoffset 0.8s cubic-bezier(0.22, 1, 0.36, 1), stroke 0.4s ease;
+}
+
+.gauge-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.gauge-value {
+    font-family: var(--font-mono);
+    font-size: 2.15rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    color: var(--text-primary);
+}
+
+.gauge-unit {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+/* ==========================================================================
+   Controls & Switches
+   ========================================================================== */
+.control-box {
+    background: var(--surface-subtle);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 1.15rem 1.25rem;
+    transition: border-color 0.2s ease, background-color 0.25s ease;
+}
+
+.switch-modern .form-check-input {
+    width: 3.3rem;
+    height: 1.75rem;
+    cursor: pointer;
+    background-color: var(--emerald-500);
+    border-color: var(--emerald-500);
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23fff'/%3e%3c/svg%3e");
+}
+
+.switch-modern .form-check-input:checked {
+    background-color: var(--amber-500);
+    border-color: var(--amber-500);
+}
+
+.switch-modern .form-check-input:focus {
+    box-shadow: 0 0 0 0.25rem rgba(16, 185, 129, 0.22);
+}
+
+.btn-pump-modern {
+    border-radius: 14px;
+    padding: 0.85rem 1.5rem;
+    font-weight: 700;
+    font-size: 0.95rem;
+    letter-spacing: 0.01em;
+    transition: all 0.22s ease;
+    border: none;
+}
+
+.btn-pump-modern:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px -5px rgba(16, 185, 129, 0.35);
+}
+
+.btn-pump-on {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: #fff;
+}
+
+.btn-pump-off {
+    background: linear-gradient(135deg, #f43f5e, #e11d48);
+    color: #fff;
+}
+
+.btn-pump-off:hover:not(:disabled) {
+    box-shadow: 0 10px 20px -5px rgba(244, 63, 94, 0.35);
+}
+
+.btn-pump-locked {
+    background: var(--border-color);
+    color: var(--text-muted);
+    cursor: not-allowed;
+}
+
+/* Stat List Rows */
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.72rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.stat-row:last-child {
+    border-bottom: none;
+}
+
+/* ==========================================================================
+   Chart Container
+   ========================================================================== */
+.chart-container {
+    position: relative;
+    height: 250px;
+    width: 100%;
+}
+
+/* ==========================================================================
+   Modern Table
+   ========================================================================== */
+.table-modern {
+    margin-bottom: 0;
+    color: var(--text-primary);
+}
+
+.table-modern thead th {
+    background: var(--surface-subtle);
+    color: var(--text-muted);
+    font-size: 0.74rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    border-bottom: 1px solid var(--border-color);
+    padding: 0.95rem 1.15rem;
+    white-space: nowrap;
+}
+
+.table-modern tbody td {
+    padding: 0.9rem 1.15rem;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: middle;
+    font-size: 0.88rem;
+    color: var(--text-primary);
+    background: transparent;
+}
+
+.table-modern tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.table-modern tbody tr:hover td {
+    background: var(--surface-subtle);
+}
+
+/* ==========================================================================
+   Alert Banner (Demo Mode)
+   ========================================================================== */
+.demo-banner {
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    color: var(--text-primary);
+    border-radius: 16px;
+    padding: 0.9rem 1.2rem;
+}
+
+.auto-notice {
+    background: rgba(14, 165, 233, 0.1);
+    border: 1px solid rgba(14, 165, 233, 0.25);
+    color: var(--text-secondary);
+    border-radius: 14px;
+    padding: 0.75rem 1rem;
+    font-size: 0.83rem;
+}
+
+/* ==========================================================================
+   Pump Active Animation
+   ========================================================================== */
+.pump-active-badge {
+    animation: gentle-pulse 1.6s infinite;
+}
+
+@keyframes gentle-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.88; transform: scale(1.03); }
+}
+
+/* ==========================================================================
+   Login Page (Modern Botanical Glass)
    ========================================================================== */
 .login-wrapper {
     min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: radial-gradient(circle at 50% 20%, #eaf5ee 0%, #f4f7f6 80%);
+    background-color: var(--bg-body);
+    background-image:
+        radial-gradient(circle at 20% 20%, rgba(16, 185, 129, 0.16) 0%, transparent 45%),
+        radial-gradient(circle at 80% 80%, rgba(14, 165, 233, 0.12) 0%, transparent 45%);
     padding: 1.5rem 1rem;
 }
 
 .login-card {
-    border: none;
-    border-radius: 20px;
-    background: #ffffff;
-    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.08);
-    position: relative;
-    overflow: hidden;
+    background: var(--surface-card);
+    border: 1px solid var(--border-color);
+    border-radius: 24px;
+    box-shadow: var(--shadow-hover);
     width: 100%;
     max-width: 440px;
+    position: relative;
+    overflow: hidden;
 }
 
-.login-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 6px;
-    background: linear-gradient(90deg, #198754, #20c997);
+.login-card-accent {
+    height: 5px;
+    background: linear-gradient(90deg, var(--emerald-500), var(--sky-500));
+    width: 100%;
 }
 
 .login-brand-icon {
-    width: 60px;
-    height: 60px;
-    background: linear-gradient(135deg, #198754, #157347);
+    width: 64px;
+    height: 64px;
+    background: linear-gradient(135deg, var(--emerald-500), var(--emerald-700));
     color: #ffffff;
-    border-radius: 16px;
+    border-radius: 18px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     font-size: 2rem;
-    box-shadow: 0 6px 16px rgba(25, 135, 84, 0.25);
+    box-shadow: 0 10px 24px rgba(16, 185, 129, 0.3);
 }
 
-.form-control:focus {
-    border-color: #198754;
-    box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.18);
+.input-modern .input-group-text {
+    background: var(--surface-subtle);
+    border-color: var(--border-color);
+    color: var(--text-muted);
+}
+
+.input-modern .form-control {
+    background: var(--surface-subtle);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+    font-size: 0.95rem;
+}
+
+.input-modern .form-control:focus {
+    background: var(--surface-card);
+    border-color: var(--emerald-500);
+    box-shadow: 0 0 0 0.22rem rgba(16, 185, 129, 0.18);
 }
 
 .demo-account-box {
-    background-color: #f8faf9;
-    border: 1px dashed #198754;
-    border-radius: 12px;
+    background: var(--surface-subtle);
+    border: 1px dashed var(--emerald-500);
+    border-radius: 14px;
 }
 
+/* Toast */
+.toast-container {
+    z-index: 1080;
+}
+
+.toast-modern {
+    background: var(--surface-card);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+}
+
+/* Footer */
+.footer-modern {
+    margin-top: auto;
+    border-top: 1px solid var(--border-color);
+    background: var(--surface-card);
+    color: var(--text-muted);
+    font-size: 0.82rem;
+}
+
+/* Dark mode Bootstrap overrides */
+[data-theme="dark"] .text-dark {
+    color: var(--text-primary) !important;
+}
+[data-theme="dark"] .text-muted,
+[data-theme="dark"] .text-secondary {
+    color: var(--text-muted) !important;
+}
+[data-theme="dark"] .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
