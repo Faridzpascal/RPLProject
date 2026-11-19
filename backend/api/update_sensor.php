@@ -48,6 +48,15 @@ if (empty($mac_address) || $moisture_level === null || !is_numeric($moisture_lev
 }
 
 $mac_address = trim((string)$mac_address);
+if (!PlantLogic::isValidMacAddress($mac_address)) {
+    http_response_code(400);
+    echo json_encode([
+        "status" => "error",
+        "message" => "Format mac_address tidak valid. Gunakan format XX:XX:XX:XX:XX:XX."
+    ], JSON_UNESCAPED_UNICODE);
+    exit();
+}
+
 $moisture_level = round((float)$moisture_level, 2);
 
 // Batasi persentase kelembapan 0 - 100%

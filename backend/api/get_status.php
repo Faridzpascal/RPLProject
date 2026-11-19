@@ -28,8 +28,18 @@ require_once __DIR__ . '/../helpers/device_auth.php';
 requireDeviceApiKey();
 
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../helpers/PlantLogic.php';
 
-$mac_address = $_GET['mac_address'] ?? null;
+$mac_address = isset($_GET['mac_address']) ? trim((string)$_GET['mac_address']) : '';
+
+if ($mac_address !== '' && !PlantLogic::isValidMacAddress($mac_address)) {
+    http_response_code(400);
+    echo json_encode([
+        "status" => "error",
+        "message" => "Format mac_address tidak valid. Gunakan format XX:XX:XX:XX:XX:XX."
+    ], JSON_UNESCAPED_UNICODE);
+    exit();
+}
 
 $database = new Database();
 $db = $database->getConnection();
