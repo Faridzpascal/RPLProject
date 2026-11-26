@@ -2,7 +2,7 @@
 > **Aplikasi Monitoring Kelembapan Tanah & Otomatisasi Penyiraman Berbasis IoT**  
 > *Mata Kuliah Rekayasa Perangkat Lunak (RPL) - Final MVP Release*
 
-[![Unit Tests](https://img.shields.io/badge/Unit%20Tests-58%20Passed%20(100%25)-success?style=flat-square&logo=php)](tests/index.html)
+[![Unit Tests](https://img.shields.io/badge/Unit%20Tests-87%20Passed%20(100%25)-success?style=flat-square&logo=php)](tests/index.html)
 [![Demo Video](https://img.shields.io/badge/Demo%20Video-demo.mp4%20(HD%20720p)-success?style=flat-square&logo=google-drive)](demo.mp4)
 [![Architecture](https://img.shields.io/badge/Architecture-REST%20API%20%2B%20SPA-blue?style=flat-square)](backend/api/)
 [![PHP](https://img.shields.io/badge/Backend-PHP%208%20Native%20PDO-777BB4?style=flat-square&logo=php)](backend/)
@@ -63,26 +63,38 @@ Aplikasi web Internet of Things (IoT) yang andal, responsif, dan terstandarisasi
 
 ```plaintext
 RPLProject/
-├── backend/
-│   ├── api/
+├── backend/                      # Layer Server, Keamanan, & Akses Data (PHP 8 PDO)
+│   ├── api/                      # Endpoint REST API (thin controllers)
+│   │   ├── check_session.php     # Endpoint GET validasi sesi login pengguna
 │   │   ├── get_dashboard.php     # Endpoint GET gabungan untuk auto-refresh SPA
 │   │   ├── get_status.php        # Endpoint GET query status pompa/mode untuk ESP32
+│   │   ├── login.php             # Endpoint POST autentikasi pengguna (+ rate limit)
+│   │   ├── logout.php            # Endpoint POST penghapusan sesi login
 │   │   ├── update_mode.php       # Endpoint POST perubahan mode AUTO / MANUAL
 │   │   ├── update_pump.php       # Endpoint POST kontrol manual pompa ON / OFF
 │   │   └── update_sensor.php     # Endpoint POST penerimaan data kelembapan ESP32
-│   ├── config/
-│   │   └── database.php          # Koneksi database MySQL dengan PDO Native
-│   └── helpers/
-│       └── PlantLogic.php        # Kelas logika bisnis terpusat & aturan domain
-├── frontend/
+│   ├── config/                   # Konfigurasi infrastruktur & environment
+│   │   └── database.php          # Koneksi database MySQL PDO + loader .env
+│   └── helpers/                  # Logika bisnis terpusat & middleware keamanan
+│       ├── auth_check.php        # Session guard & whitelist CORS
+│       ├── device_auth.php       # Validasi X-API-Key perangkat ESP32
+│       ├── PlantLogic.php        # Kelas logika bisnis murni & aturan domain
+│       └── rate_limiter.php      # Pembatasan percobaan login (anti brute-force)
+├── frontend/                     # Layer Presentasi / Web SPA
 │   ├── css/
-│   │   └── style.css             # Tema desain custom tanaman, cards & micro-animations
+│   │   └── style.css             # Tema desain botanical IoT, bento cards & dark/light mode
 │   ├── js/
-│   │   └── app.js                # Logika SPA, AJAX polling 5s, toast & fallback demo
-│   └── index.html                # Tampilan utama web dashboard (Bahasa Indonesia)
-├── tests/
+│   │   └── app.js                # Logika SPA, Chart.js, AJAX polling 5s & kontrol UI
+│   ├── index.html                # Halaman utama dashboard monitoring & kontrol
+│   └── login.html                # Halaman autentikasi pengguna
+├── esp32/                        # Layer Firmware Edge / Mikrokontroler
+│   ├── secrets.example.h         # Template kredensial Wi-Fi, URL server & API Key
+│   └── smart_plant.ino           # Firmware Arduino C++ ESP32 (WiFi & HTTP/HTTPS Client)
+├── tests/                        # Layer Pengujian Otomatis (terisolasi dari produksi)
+│   ├── .htaccess                 # Pembatasan akses web hanya untuk localhost
+│   ├── AuthenticationTest.php    # Unit Test Auth, CORS whitelist & Rate Limiter
 │   ├── AutoWateringLogicTest.php # Unit Test US-2: Logika siram otomatis & histeresis
-│   ├── DeviceConnectivityTest.php# Unit Test US-5: Heartbeat online & validasi MAC
+│   ├── DeviceConnectivityTest.php# Unit Test US-5: Heartbeat, MAC & validasi API Key
 │   ├── PumpControlTest.php       # Unit Test kontrol pompa terintegrasi
 │   ├── PumpSafetyGuardTest.php   # Unit Test US-3: Guard rule & validasi pompa
 │   ├── SensorLogStatisticsTest.php# Unit Test US-4: Statistik rata-rata, min, max, count
@@ -91,14 +103,44 @@ RPLProject/
 │   ├── TestCase.php              # Framework assertion mandiri (zero-dependency)
 │   ├── index.html                # In-browser visual interactive unit test runner
 │   └── run_tests.php             # CLI script test runner
-├── esp32/
-│   └── smart_plant.ino           # Firmware Arduino C++ ESP32 (WiFi & HTTPClient)
-├── database.sql                  # Skrip SQL pembuatan tabel & data awal pengujian
+├── .env.example                  # Template variabel lingkungan (database & API)
+├── .gitignore                    # Daftar file sensitif yang dikecualikan dari Git
+├── database.sql                  # Skrip SQL pembuatan database, tabel & data awal
 ├── HowToRun.md                   # Petunjuk lengkap menjalankan proyek
 ├── checklist_mvp.md              # Matriks kelengkapan fitur & bukti testing (PASSED)
 ├── index.php                     # Entry point redirector ke frontend/index.html
 └── README.md                     # Dokumentasi arsitektur & panduan proyek
 ```
+
+---
+
+## 🏗️ Arsitektur Kode & Alasan Pemilihan Struktur Folder
+
+Proyek ini menerapkan **Modular Layered Architecture (Client–Server REST API + SPA + Edge IoT)** dengan pemisahan tegas antara antarmuka pengguna, layanan backend, firmware perangkat keras, dan pengujian.
+
+### 1. Penjelasan Peran Setiap Folder
+
+| Folder | Layer / Peran | Tanggung Jawab Utama |
+| :--- | :--- | :--- |
+| **`frontend/`** | *Presentation Layer (SPA)* | Menangani seluruh tampilan UI (`index.html`, `login.html`), styling (`css/style.css`), dan interaksi client-side (`js/app.js`) menggunakan `Fetch API` ke endpoint JSON. |
+| **`backend/api/`** | *API / Controller Layer* | Bertindak sebagai *thin endpoints* yang menerima HTTP request, memvalidasi parameter, memanggil helper/database, dan mengembalikan respons JSON terstandar. |
+| **`backend/helpers/`** | *Business Logic & Security Layer* | Menyimpan aturan domain murni (`PlantLogic.php`) serta middleware keamanan (`auth_check.php`, `device_auth.php`, `rate_limiter.php`) agar dapat dipakai ulang lintas endpoint. |
+| **`backend/config/`** | *Infrastructure Layer* | Mengisolasi konfigurasi koneksi database (`database.php`) dan pembacaan `.env` agar tidak tercampur dengan logika aplikasi. |
+| **`esp32/`** | *Edge / IoT Device Layer* | Menyimpan firmware mikrokontroler (`smart_plant.ino`) dan template kredensial (`secrets.example.h`) yang memiliki siklus kompilasi (Arduino IDE) berbeda dari web server. |
+| **`tests/`** | *Verification Layer* | Menampung seluruh unit test harness yang menguji logika bisnis secara terisolasi dan dibatasi aksesnya di server produksi melalui `.htaccess`. |
+
+### 2. Alasan Memilih Arsitektur Folder Ini
+
+1. **Separation of Concerns (Pemisahan Tanggung Jawab):**
+   Memisahkan `frontend/`, `backend/`, dan `esp32/` membuat perubahan pada UI (misalnya redesign dashboard atau grafik) tidak berisiko merusak logika penyiraman di server maupun firmware di ESP32.
+2. **Testability (Mudah Diuji Tanpa Database/Server):**
+   Dengan memindahkan aturan bisnis (klasifikasi kelembapan, histeresis pompa, validasi MAC address) ke `backend/helpers/PlantLogic.php`, folder `tests/` dapat menguji seluruh logika inti secara langsung dalam hitungan milidetik (`php tests/run_tests.php`) tanpa bergantung pada koneksi MySQL atau HTTP server.
+3. **Security by Structure (Keamanan Berbasis Struktur):**
+   Kredensial sensitif (`.env`, `esp32/secrets.h`) dipisahkan dari kode sumber dan dimasukkan ke `.gitignore`, middleware keamanan (`auth_check.php`, `device_auth.php`, `rate_limiter.php`) terpusat di `backend/helpers/` sehingga tidak ada duplikasi validasi, dan `tests/.htaccess` melindungi test runner dari akses publik saat dideploy.
+4. **Maintainability & Kemudahan Kolaborasi:**
+   Setiap file memiliki peran yang jelas dan mudah ditebak (*predictable*). Tim frontend cukup bekerja di `frontend/`, tim backend di `backend/`, dan tim hardware di `esp32/` tanpa saling menimpa file yang sama.
+5. **Ringan & Mudah Dideploy (*Zero-Framework Overhead*):**
+   Struktur folder native PHP + Vanilla JS ini tidak memerlukan *build step* (Webpack/Vite/Composer) sehingga dapat langsung dijalankan di XAMPP, Laragon, maupun shared hosting standar dengan konfigurasi minimal.
 
 ---
 
@@ -184,13 +226,12 @@ php tests/run_tests.php
 **Hasil Pengujian:**
 ```text
 ===========================================================================
-📊 RINGKASAN HASIL PENGUJIAN 5 UNIT TEST SUITES:
-   Total Test Suites: 5 Suites
-   Total Test Cases : 20 Test Cases
-   Total Assertions : 58 Assertions
-   Lulus (PASSED)   : 58 (100%)
+📊 RINGKASAN HASIL PENGUJIAN UNIT TEST SUITES:
+   Total Test Suites: 5 Suites (+ Auth)
+   Total Test Cases : 28 Test Cases
+   Total Assertions : 87 Assertions
+   Lulus (PASSED)   : 87 (100%)
    Gagal (FAILED)   : 0
-   Waktu Eksekusi   : ~0.5 ms
 ===========================================================================
 🎉 STATUS: ALL PASSED! 100% ACCEPTANCE CRITERIA 5 USER STORIES TERPENUHI
 ```
