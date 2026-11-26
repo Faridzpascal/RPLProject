@@ -6,7 +6,7 @@
  */
 
 class PlantLogic {
-    const MOISTURE_THRESHOLD_DRY = 20.0;
+    const MOISTURE_THRESHOLD_DRY = 35.0;
     const MOISTURE_THRESHOLD_WET = 70.0;
     const ONLINE_TIMEOUT_SECONDS = 30;
 
