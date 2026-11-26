@@ -1,0 +1,75 @@
+name: Smart Plant CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - v1.0
+      - v1.0_dev
+      - V1.1
+  pull_request:
+    branches:
+      - main
+      - v1.0
+      - V1.1
+
+jobs:
+  unit-test:
+    name: Unit Test (PHP)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PHP 8.2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: none
+
+      - name: Check PHP syntax across backend
+        run: |
+          find backend -name "*.php" -print0 | xargs -0 -n1 php -l
+
+      - name: Run Smart Plant Unit Test Suites
+        run: php tests/run_tests.php
+
+  build-and-deploy:
+    name: Auto Build & Deploy
+    needs: unit-test
+    if: success() && (github.ref == 'refs/heads/v1.0_dev' || github.ref == 'refs/heads/V1.1' || github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build production package (exclude tests & dev files)
+        run: |
+          mkdir -p dist
+          cp -r backend frontend index.php database.sql .env.example dist/
+          rm -rf dist/tests
+          ls -la dist
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: smartplant-build-${{ github.ref_name }}
+          path: dist/
+          retention-days: 14
+
+      - name: Trigger Deploy Webhook (if configured)
+        env:
+          DEPLOY_WEBHOOK_URL: ${{ secrets.DEPLOY_WEBHOOK_URL }}
+        run: |
+          if [ -n "$DEPLOY_WEBHOOK_URL" ]; then
+            echo "Triggering deployment webhook..."
+            curl -fsSL -X POST "$DEPLOY_WEBHOOK_URL"
+          else
+            echo "DEPLOY_WEBHOOK_URL secret belum diset; paket build siap di-deploy dari artifact."
+          fi
+
+      - name: Deployment summary
+        run: |
+          echo "✅ All Unit Tests PASSED -> Build & Deploy selesai pada branch ${{ github.ref_name }}!"
